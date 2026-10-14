@@ -20,6 +20,7 @@ An MIT-licensed kit that connects consented website visits to CRM outcomes and r
 | Configure Google Ads delivery | [Google Ads](docs/google-ads.md) |
 | Configure Facebook delivery and deduplication | [Meta](docs/meta.md) |
 | Request formats, reports and read-only assistant tools | [API reference](docs/api.md) |
+| Check bots and ad-block observations | [Traffic checks](docs/traffic-checks.md) |
 | Prove source, revenue and delivery before launch | [Verification](docs/verify.md) |
 
 ## What is in this repository

@@ -22,6 +22,7 @@ function money(amount, currency) {
 function monies(values) { return Object.entries(values).map(([currency, amount]) => money(amount, currency)).join(" · ") || "—"; }
 function render(data) {
   current = data;
+  window.dispatchEvent(new CustomEvent("open-attribution:report", { detail: { from: data.report.from, to: data.report.to } }));
   const r = data.report;
   $("coverage").hidden = !r.coverage.limited && !r.partialHistories;
   $("coverage").textContent = r.coverage.limited ? "Outcome coverage is incomplete. Choose a shorter period before making decisions." : `All saved activities are included. ${r.partialHistories} have incomplete visit history, so their attribution may be incomplete.`;
