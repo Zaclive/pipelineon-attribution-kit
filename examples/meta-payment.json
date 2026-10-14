@@ -1,0 +1,21 @@
+{
+  "externalId": "synthetic-payment-123",
+  "source": "my-crm",
+  "eventType": "payment",
+  "occurredAt": "2026-10-14T00:00:00Z",
+  "sourceUpdatedAt": "2026-10-14T00:01:00Z",
+  "outcome": "completed",
+  "amountMinor": 125050,
+  "currency": "USD",
+  "meta": {
+    "version": 1,
+    "deliveryOwner": "self",
+    "consent": "granted",
+    "dataProvenance": "customer_provided",
+    "deduplication": "server_only",
+    "actionSource": "system_generated",
+    "userData": {
+      "externalIdSha256": "7c147af2172762d21bdc8503bf8b5cf73c90b89081ef40c3ef13e6c622d72c55"
+    }
+  }
+}

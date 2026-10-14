@@ -1,0 +1,12 @@
+{
+  "externalId": "payment-123",
+  "source": "my-crm",
+  "eventType": "payment",
+  "occurredAt": "2026-10-13T12:00:00Z",
+  "sourceUpdatedAt": "2026-10-13T12:01:00Z",
+  "outcome": "completed",
+  "qualification": "qualified",
+  "visitorSessionId": "44444444-4444-4444-8444-444444444444",
+  "amountMinor": 125050,
+  "currency": "USD"
+}

@@ -1,0 +1,10 @@
+{
+  "provider": "callrail",
+  "accountId": "company123",
+  "callId": "call456",
+  "occurredAt": "2026-10-13T11:00:00Z",
+  "sourceUpdatedAt": "2026-10-13T11:03:00Z",
+  "status": "answered",
+  "qualification": "unknown",
+  "visitorSessionId": "44444444-4444-4444-8444-444444444444"
+}
