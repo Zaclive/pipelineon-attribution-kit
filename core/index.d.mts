@@ -1,4 +1,7 @@
 export class KitError extends Error { code: string; status: number; constructor(code: string, message: string, status: number); }
+export interface FormVisitObservation { id: string; siteId: string; identityKeys: string[]; visitorSessionId: string | null; url: string; occurredAt: string; }
+export function formIdentityEmails(value: unknown): string[];
+export function matchFormVisit(form: { siteId: string; identityKey: string | null; url: string; occurredAt: string }, observations: FormVisitObservation[]): { status: "linked" | "ambiguous" | "unlinked"; observationId: string | null; visitorSessionId: string | null };
 export type Model = "first_touch" | "last_touch" | "last_non_direct";
 export const MODELS: Model[];
 export interface Touch { url: string; referrer: string | null; occurredAt: string; visitorId: string | null; parameters: Record<string, string>; sourceLabel: string; }

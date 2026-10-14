@@ -176,3 +176,13 @@ Retry network errors, rate limits and temporary server failures with bounded exp
 Meta eligibility is bounded by original event age. Old backfills and corrections must not be disguised as fresh conversions. The [Meta guide](meta.md#deduplication-retries-and-corrections) explains the kit's seven-day event age limit, bounded retry window and behavior after an accepted delivery. Correcting local revenue does not retroactively change an accepted Meta purchase.
 
 Run the [end-to-end checks](verify.md) for every source configuration. Use [CRM access options](crm-access.md) and [CallRail setup](callrail.md) where relevant.
+
+## Reconcile confirmed forms with saved browser evidence
+
+PipelineOn can link a confirmed HubSpot form using its exact submitted email, the same website/page and a submission time within two minutes of saved first-party form evidence. This stores an attribution link independently of prospect recovery, lead unlocks and identity purchases. It preserves the original CRM event time and conversion ID. Multiple matching browser sessions or shared email identities remain ambiguous. Phone, household and time proximity alone do not establish a link.
+
+For a self-hosted adapter, `formIdentityEmails` and `matchFormVisit` are exported from `core/index.mjs`. Derive identity keys on your trusted backend, check current CRM permissions and identity uniqueness, and supply only confirmed submissions from the same website. Persist the returned session against the original source event. The helpers do not authenticate a CRM or store a link for you.
+
+Prefer carrying the accepted browser reference through the enquiry as described above. For custom JavaScript form submission, explicitly map that reference into your backend payload; a hidden input alone does not change a custom JSON request. Missing context must not block the form. Only visits before an outcome receive acquisition credit.
+
+The MIT server receives outcomes through its authenticated API; your backend or CRM adapter completes this handoff. Test a tagged visit, successful form, CRM contact and outcome together, including consent denial, missing context, retries and later visits. See [verification](verify.md).
