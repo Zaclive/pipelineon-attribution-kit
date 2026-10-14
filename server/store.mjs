@@ -1,6 +1,7 @@
 import { DatabaseSync } from "node:sqlite";
 import { createHash, randomUUID } from "node:crypto";
-import { KitError, safePage, sessionReference, timestamp, validateOutcome, buildTouches, buildReport, trackingDoctor } from "../core/index.mjs";
+import { KitError, safePage, sessionReference, timestamp, validateOutcome, buildTouches, buildReport, summarizePeople, trackingDoctor } from "../core/index.mjs";
+import { openPersonStore } from "./person-store.mjs";
 import { openCallrailStore } from "./callrail-store.mjs";
 import { openMetaStore } from "./meta-store.mjs";
 import { openGoogleStore } from "./google-store.mjs";
@@ -34,6 +35,7 @@ export function openStore(filename, siteId, metaDestination, callrailConfig, goo
   }
   const meta = openMetaStore(db, siteId, metaDestination, transaction, audit);
   const googleAds = openGoogleStore(db, siteId, googleDestination, transaction, audit);
+  const people = openPersonStore(db, transaction, audit);
   function collect(input, origin, now) {
     if (input.siteId !== siteId) throw new KitError("NOT_FOUND", "Website not available.", 404);
     const visitor = sessionReference(input.visitorId);
@@ -87,8 +89,22 @@ export function openStore(filename, siteId, metaDestination, callrailConfig, goo
     const raw = db.prepare("SELECT payload FROM outcomes WHERE occurred_at>=? AND occurred_at<? ORDER BY occurred_at,source,external_id LIMIT 100001").all(range.from, range.to);
     if (raw.length > 100000) throw new KitError("REPORT_TOO_LARGE", "This period has too much evidence for one report. Choose a shorter period; no partial totals were returned.", 422);
     const events = raw.map(row => JSON.parse(row.payload));
+    const identityCache = {};
+    const identity = new Map(events.map(event => [`${event.source}:${event.externalId}`, people.resolve(event, identityCache)]));
     const histories = new Map();
     for (const event of events) {
+      const person = identity.get(`${event.source}:${event.externalId}`);
+      if (person) {
+        if (!person.person) continue;
+        const key = person.person.id + ":" + person.sessionIds.join(",");
+        if (histories.has(key)) continue;
+        if (person.status !== "linked") { histories.set(key, null); continue; }
+        if (person.sessionIds.length > 50) { histories.set(key, "limited"); continue; }
+        const pages = db.prepare(`SELECT id,url,referrer,occurred_at AS occurredAt,session_id AS visitorId FROM visits
+          WHERE session_id IN (${person.sessionIds.map(() => "?").join(",")}) AND occurred_at<? ORDER BY occurred_at,id LIMIT 5001`).all(...person.sessionIds, range.to);
+        histories.set(key, pages.length > 5000 ? "limited" : pages);
+        continue;
+      }
       if (!event.visitorSessionId || histories.has(event.visitorSessionId)) continue;
       const session = db.prepare("SELECT id FROM sessions WHERE id=?").get(event.visitorSessionId);
       if (!session) { histories.set(event.visitorSessionId, null); continue; }
@@ -96,7 +112,15 @@ export function openStore(filename, siteId, metaDestination, callrailConfig, goo
       histories.set(event.visitorSessionId, pages.length > 5000 ? "limited" : pages);
     }
     const attributed = events.map(event => {
-      const history = histories.get(event.visitorSessionId);
+      const identityLink = identity.get(`${event.source}:${event.externalId}`);
+      const person = identityLink?.person;
+      if (identityLink && identityLink.status !== "linked") return { ...event, attribution: { status: identityLink.status, evidence: null, touches: null, person } };
+      const history = histories.get(identityLink ? person.id + ":" + identityLink.sessionIds.join(",") : event.visitorSessionId);
+      if (identityLink && history === "limited") return { ...event, attribution: { status: "history_limited", evidence: "person_identity", touches: null, person } };
+      if (identityLink && history) {
+        const touches = buildTouches(history, event.occurredAt);
+        return { ...event, attribution: { status: touches.firstTouch ? "linked" : "unlinked", evidence: "person_identity", touches, person } };
+      }
       if (!history) return { ...event, attribution: { status: event.visitorSessionId ? "session_unavailable" : "unlinked", evidence: null, touches: null } };
       if (history === "limited") return { ...event, attribution: { status: "history_limited", evidence: "session_reference", touches: null } };
       const touches = buildTouches(history, event.occurredAt);
@@ -106,7 +130,7 @@ export function openStore(filename, siteId, metaDestination, callrailConfig, goo
     const result = buildReport(attributed, range, coverage);
     const pages = db.prepare("SELECT url,occurred_at FROM visits WHERE occurred_at>=? AND occurred_at<? ORDER BY occurred_at DESC LIMIT 1000").all(range.from, range.to);
     const telemetry = { lastPageviewAt: pages[0]?.occurred_at ?? null, taggedPageviews: pages.filter(row => Object.keys(safePage(row.url)?.parameters ?? {}).length > 0).length, checkedAt: now };
-    return { siteId, report: result, doctor: trackingDoctor(result, telemetry), telemetry };
+    return { siteId, report: result, people: summarizePeople(attributed), doctor: trackingDoctor(result, telemetry), telemetry };
   }
   function recovery(range) {
     // Browser-level opportunities only. This does not identify people or establish outreach eligibility.
@@ -126,5 +150,5 @@ export function openStore(filename, siteId, metaDestination, callrailConfig, goo
       consistency: "Pause imports during a full export to keep pagination consistent." };
   }
   const callrail = openCallrailStore(db, callrailConfig, transaction, audit, importOutcome);
-  return { collect, importOutcome, report, recovery, exportOutcomes, meta, callrail, googleAds, close: () => db.close() };
+  return { collect, importOutcome, report, recovery, exportOutcomes, people, meta, callrail, googleAds, close: () => db.close() };
 }

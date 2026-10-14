@@ -1,13 +1,10 @@
 import { KitError } from "./validation.mjs";
+import { normalizeUtmParameters, campaignIdEvidence } from "./utm.mjs";
 // Report-only classification preserves the original saved touch and traffic labels.
-function campaignEvidence(touch) {
-  const p = touch?.parameters ?? {};
-  const campaignIds = Object.fromEntries(["gad_campaignid", "hsa_cam", "gc_id", "utm_id", "utm_campaign_id", "campaign_id", "campaignid"]
-    .filter(key => p[key]).map(key => [key, p[key]]));
-  if (/^\d+$/.test(p.utm_campaign ?? "")) campaignIds.utm_campaign = p.utm_campaign;
-  const values = [...new Set(Object.values(campaignIds))];
-  const campaignConflict = values.length > 1;
-  const campaign = p.utm_campaign || (campaignConflict ? "Conflicting campaign IDs" : values.length ? `Campaign ID ${values[0]}` : "");
+export function campaignEvidence(touch) {
+  const p = normalizeUtmParameters(touch?.parameters ?? {});
+  const { campaignIds, campaignConflict, campaignId, taxonomyId } = campaignIdEvidence(p);
+  const campaign = p.utm_campaign || (campaignConflict ? "Conflicting campaign IDs" : campaignId ? `Campaign ID ${campaignId}` : taxonomyId ? `UTM ID ${taxonomyId}` : "");
   const utmSource = (p.utm_source ?? "").trim().toLowerCase();
   const googleHost = value => /^(?:[^.]+\.)?google\.(?:[a-z]{2,3}|co\.[a-z]{2}|com\.[a-z]{2})$/.test(value);
   const googleName = value => /^(?:google(?:[ _-]?ads)?|adwords)$/.test(value) || googleHost(value);
@@ -53,6 +50,7 @@ export function buildReport(rows, range, coverage) {
   }
   const totals = emptyTotals();
   const groups = new Map();
+  const journeys = new Map();
   const statuses = Object.create(null);
   const evidenceCounts = Object.create(null);
   let linkedOutcomes = 0;
@@ -78,6 +76,16 @@ export function buildReport(rows, range, coverage) {
     const key = campaign.groupId;
     if (!groups.has(key)) groups.set(key, { ...campaign, ...emptyTotals() });
     addOutcome(groups.get(key), row);
+    if (status === "linked" && touches?.firstTouch) {
+      const describe = value => value ? { source: campaignEvidence(value).source, campaign: campaignEvidence(value).campaign,
+        campaignIds: campaignEvidence(value).campaignIds, campaignConflict: campaignEvidence(value).campaignConflict } : null;
+      const journey = { first: describe(touches.firstTouch), last: describe(touches.lastTouch),
+        lastNonDirect: describe(touches.lastNonDirectTouch) };
+      const journeyKey = JSON.stringify(journey);
+      if (!journeys.has(journeyKey)) journeys.set(journeyKey, { ...journey, activities: 0, conversions: 0 });
+      journeys.get(journeyKey).activities++;
+      if (isConversion(row)) journeys.get(journeyKey).conversions++;
+    }
     if (touches?.firstTouch && status === "linked" && row.eventType === "payment" && row.outcome === "completed") {
       const hours = (Date.parse(row.occurredAt) - Date.parse(touches.firstTouch.occurredAt)) / 3600000;
       if (Number.isFinite(hours) && hours >= 0) lags.push(hours);
@@ -89,6 +97,8 @@ export function buildReport(rows, range, coverage) {
   return { version: 1, ...range, totals, linkedOutcomes, unlinkedOutcomes: totals.outcomes - linkedOutcomes,
     linkedConversions, unlinkedConversions: totals.conversions - linkedConversions, campaignConflictActivities,
     partialHistories, statuses, evidenceCounts, medianHoursToPayment: median, paymentLagSampleSize: lags.length,
+    journeys: [...journeys.values()].sort((a,b) => b.conversions - a.conversions || b.activities - a.activities).slice(0,100),
+    journeysLimited: journeys.size > 100,
     groups: [...groups.values()].sort((a, b) => b.outcomes - a.outcomes || a.source.localeCompare(b.source) || a.campaign.localeCompare(b.campaign)),
     coverage, explanation: "All saved activities in the selected period by original event time. Conversions are received or completed forms, calls, bookings and payments; they are event counts, not unique customers or ad-platform conversions. Stage changes and unsuccessful or other activity are separate. Revenue is completed payments, grouped by currency. Campaign IDs describe the selected touch, not a verified campaign name; conflicting IDs are retained without choosing a winner. Google referrals have no saved paid evidence and are not proof of organic traffic. Attribution describes evidence, not causation. Separate source systems are not automatically deduplicated. This is not an ad-platform delivery report." };
 }
@@ -101,7 +111,7 @@ export function trackingDoctor(report, telemetry) {
   check("linkage", !report.totals.outcomes ? "unknown" : report.unlinkedOutcomes ? "action" : "pass", "Visit-to-outcome link", `${report.linkedOutcomes} linked; ${report.unlinkedOutcomes} unattributed.`, "Pass the accepted visitorSessionId with the form or call and keep it in the CRM outcome.");
   check("value", !report.totals.payments ? "unknown" : report.totals.unknownValuePayments ? "action" : "pass", "Payment value", `${report.totals.payments} completed payments; ${report.totals.unknownValuePayments} without a recorded amount.`, "Supply amountMinor and currency together. A call or won deal is not a payment.");
   check("coverage", report.coverage.limited || report.partialHistories ? "action" : "pass", "History coverage", report.coverage.limited ? "Outcome coverage is incomplete. Do not use these totals for budget decisions." : `Full saved activity totals. ${report.partialHistories} activities have incomplete visit history.`, "Use a narrower date range or export all source records before making budget decisions.");
-  check("campaign_conflicts", report.campaignConflictActivities ? "action" : "pass", "Campaign ID consistency", `${report.campaignConflictActivities} activities have conflicting saved campaign IDs.`, "Check landing URL templates and CRM tracking parameters. No campaign ID is chosen when saved fields disagree.");
+  check("campaign_conflicts", report.campaignConflictActivities ? "action" : "pass", "Campaign ID consistency", `${report.campaignConflictActivities} activities have disagreeing ad campaign IDs within the selected visit.`, "Compare gad_campaignid, hsa_cam and other ad campaign IDs in that visit's landing URL. Check stale tracking templates and redirects. A different campaign on a later visit is a separate touch, not this warning. UTM taxonomy IDs and numeric campaign names are kept separately; no winner is guessed.");
   check("destination", "unknown", "Ad-platform delivery", "This attribution report does not inspect delivery receipts.", "Open Meta delivery status to inspect acknowledgements and failed attempts. Verify any other destinations separately.");
   return { checks, checkedAt: telemetry.checkedAt, status: checks.some(row => row.status === "action") ? "needs_attention" : "observed", explanation: "These checks inspect saved evidence. A pass does not prove a fresh end-to-end installation test or permission to contact a visitor." };
 }
