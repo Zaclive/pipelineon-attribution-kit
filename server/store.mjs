@@ -4,6 +4,7 @@ import { KitError, safePage, sessionReference, timestamp, validateOutcome, build
 import { openCallrailStore } from "./callrail-store.mjs";
 import { openMetaStore } from "./meta-store.mjs";
 import { openGoogleStore } from "./google-store.mjs";
+import { adBlockStatus, browserBotReason } from "../core/traffic-quality.mjs";
 
 export function openStore(filename, siteId, metaDestination, callrailConfig, googleDestination) {
   const db = new DatabaseSync(filename);
@@ -17,6 +18,8 @@ export function openStore(filename, siteId, metaDestination, callrailConfig, goo
     CREATE INDEX IF NOT EXISTS outcomes_time ON outcomes(occurred_at);
     CREATE INDEX IF NOT EXISTS outcomes_session ON outcomes(session_id);
     CREATE TABLE IF NOT EXISTS audit (id INTEGER PRIMARY KEY, occurred_at TEXT NOT NULL, action TEXT NOT NULL, object_hash TEXT NOT NULL);
+    CREATE TABLE IF NOT EXISTS collection_checks (id TEXT PRIMARY KEY, payload_hash TEXT NOT NULL, occurred_at TEXT NOT NULL, decision TEXT NOT NULL, reason TEXT NOT NULL, ad_block_status TEXT NOT NULL);
+    CREATE INDEX IF NOT EXISTS collection_checks_time ON collection_checks(occurred_at);
   `);
   const configured = db.prepare("SELECT site_id FROM config WHERE id=1").get();
   if (configured && configured.site_id !== siteId) { db.close(); throw new KitError("SITE_MISMATCH", "This database belongs to a different site. Use a separate database.", 500); }
@@ -34,7 +37,7 @@ export function openStore(filename, siteId, metaDestination, callrailConfig, goo
   }
   const meta = openMetaStore(db, siteId, metaDestination, transaction, audit);
   const googleAds = openGoogleStore(db, siteId, googleDestination, transaction, audit);
-  function collect(input, origin, now) {
+  function collect(input, origin, now, requestContext) {
     if (input.siteId !== siteId) throw new KitError("NOT_FOUND", "Website not available.", 404);
     const visitor = sessionReference(input.visitorId);
     const id = sessionReference(input.eventId);
@@ -45,11 +48,26 @@ export function openStore(filename, siteId, metaDestination, callrailConfig, goo
     if (!page || page.origin !== origin) throw new KitError("INVALID_INPUT", "Page origin does not match the request origin.", 400);
     const referrer = safePage(input.referrer)?.origin ?? null;
     const digest = hash(JSON.stringify([visitor, at, page.url, referrer]));
+    const diagnostics = input.browserDiagnostics?.version === 1 ? input.browserDiagnostics : null;
+    // HTTP callers pass the real request user agent, never proxy headers supplied by clients.
+    // Direct store callers have no browser request; browser automation still applies.
+    const reason = browserBotReason(requestContext ? requestContext.userAgent : "internal", diagnostics?.webdriver === true, null, null);
     return transaction(() => {
       const existing = db.prepare("SELECT session_id,payload_hash FROM visits WHERE id=?").get(id);
       if (existing) {
         if (existing.payload_hash !== digest) throw new KitError("IDEMPOTENCY_CONFLICT", "This event ID already has different data.", 409);
         return { visitorSessionId: existing.session_id, duplicate: true };
+      }
+      const check = db.prepare("SELECT payload_hash,decision,reason FROM collection_checks WHERE id=?").get(id);
+      if (check) {
+        if (check.payload_hash !== digest) throw new KitError("IDEMPOTENCY_CONFLICT", "This event ID already has different data.", 409);
+        return { status: "filtered", reason: check.reason, visitorSessionId: null, duplicate: true };
+      }
+      db.prepare("INSERT INTO collection_checks VALUES(?,?,?,?,?,?)")
+        .run(id, digest, at, reason ? "filtered" : "accepted", reason ?? "accepted", adBlockStatus(diagnostics?.adBlockStatus));
+      if (reason) {
+        audit("visit_filtered", id, now);
+        return { status: "filtered", reason, visitorSessionId: null, duplicate: false };
       }
       let session = db.prepare("SELECT id FROM sessions WHERE visitor_id=?").get(visitor);
       if (!session) {
@@ -60,6 +78,17 @@ export function openStore(filename, siteId, metaDestination, callrailConfig, goo
       audit("visit_collected", id, now);
       return { visitorSessionId: session.id, duplicate: false };
     });
+  }
+  function trafficChecks(range) {
+    const rows = db.prepare(`SELECT decision,reason,ad_block_status AS adBlockStatus,COUNT(*) AS count
+      FROM collection_checks WHERE occurred_at>=? AND occurred_at<? GROUP BY decision,reason,ad_block_status`).all(range.from, range.to);
+    const result = { accepted: 0, filtered: 0, reasons: {}, adBlock: { detected: 0, not_detected: 0, unknown: 0 } };
+    for (const row of rows) {
+      result[row.decision] += row.count;
+      if (row.decision === "filtered") result.reasons[row.reason] = (result.reasons[row.reason] ?? 0) + row.count;
+      else result.adBlock[row.adBlockStatus] += row.count;
+    }
+    return { ...result, explanation: "Checks cover requests observed since this feature was installed. Ad-block results describe accepted visits only. Detected means an ad-like element was hidden; it does not prove network blocking or recovered conversions. Missing historical checks are not counted as clear." };
   }
   function importOutcome(raw, now) {
     const event = validateOutcome(raw);
@@ -126,5 +155,5 @@ export function openStore(filename, siteId, metaDestination, callrailConfig, goo
       consistency: "Pause imports during a full export to keep pagination consistent." };
   }
   const callrail = openCallrailStore(db, callrailConfig, transaction, audit, importOutcome);
-  return { collect, importOutcome, report, recovery, exportOutcomes, meta, callrail, googleAds, close: () => db.close() };
+  return { collect, trafficChecks, importOutcome, report, recovery, exportOutcomes, meta, callrail, googleAds, close: () => db.close() };
 }

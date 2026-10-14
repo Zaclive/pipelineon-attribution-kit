@@ -9,6 +9,7 @@ import { processMetaQueue, sendMeta } from "./meta-delivery.mjs";
 import { processGoogleQueue, sendGoogle, readGoogleStatus, googleTokenProvider } from "./google-delivery.mjs";
 
 const STATIC = { "/": ["../public/index.html", "text/html"], "/app.js": ["../public/app.js", "text/javascript"], "/style.css": ["../public/style.css", "text/css"], "/pixel.js": ["../public/pixel.js", "text/javascript"] };
+STATIC["/traffic-checks.js"] = ["../public/traffic-checks.js", "text/javascript"];
 STATIC["/callrail.js"] = ["../public/callrail.js", "text/javascript"];
 STATIC["/callrail-status.js"] = ["../public/callrail-status.js", "text/javascript"];
 STATIC["/meta.js"] = ["../public/meta.js", "text/javascript"];
@@ -113,7 +114,7 @@ export function createKitServer(config) {
           response.setHeader("Access-Control-Allow-Methods", "POST"); response.setHeader("Access-Control-Allow-Headers", "Content-Type"); response.writeHead(204); response.end(); return;
         }
         if (request.method !== "POST") throw new KitError("METHOD_NOT_ALLOWED", "Use POST.", 405);
-        send(store.collect(await body(request), origin, now), 200); return;
+        send(store.collect(await body(request), origin, now, { userAgent: request.headers["user-agent"] }), 200); return;
       }
       if (origin && origin !== publicOrigin) throw new KitError("FORBIDDEN", "Origin is not allowed.", 403);
       if (request.method === "GET" && STATIC[url.pathname]) {
@@ -159,9 +160,10 @@ export function createKitServer(config) {
         if (typeof input.id !== "string" || Object.keys(input).some(key => key !== "id")) throw new KitError("INVALID_INPUT", "Supply a delivery id.", 400);
         send(store.meta.retry(input.id, now), 200); return;
       }
-      if (["/v1/report", "/v1/doctor", "/v1/recovery"].includes(url.pathname) && request.method === "GET") {
+      if (["/v1/report", "/v1/doctor", "/v1/recovery", "/v1/traffic-checks"].includes(url.pathname) && request.method === "GET") {
         const range = reportRange(Object.fromEntries(url.searchParams), now);
-        if (url.pathname === "/v1/recovery") send(store.recovery(range), 200);
+        if (url.pathname === "/v1/traffic-checks") send(store.trafficChecks(range), 200);
+        else if (url.pathname === "/v1/recovery") send(store.recovery(range), 200);
         else { const result = store.report(range, now); send(url.pathname === "/v1/doctor" ? result.doctor : result, 200); }
         return;
       }

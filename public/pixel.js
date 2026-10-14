@@ -1,5 +1,40 @@
 (function () {
   "use strict";
+// BEGIN SHARED BROWSER DIAGNOSTICS
+function collectBrowserDiagnostics(browserWindow, browserDocument, browserNavigator) {
+  var result = { version: 1, webdriver: false, adBlockStatus: "unknown" };
+  var control = null;
+  var bait = null;
+  try { result.webdriver = browserNavigator.webdriver === true; } catch (_) {}
+  try {
+    if (!browserDocument.body || typeof browserWindow.getComputedStyle !== "function") return result;
+    function probe(className) {
+      var node = browserDocument.createElement("div");
+      node.className = className;
+      node.setAttribute("aria-hidden", "true");
+      node.style.cssText = "position:absolute;left:-10000px;top:-10000px;width:1px;height:1px;pointer-events:none;";
+      return node;
+    }
+    function hidden(node) {
+      var style = browserWindow.getComputedStyle(node);
+      return style.display === "none" || style.visibility === "hidden" || node.offsetWidth === 0 || node.offsetHeight === 0;
+    }
+    control = probe("po-diagnostic-control");
+    bait = probe("adsbox ad-banner adsbygoogle");
+    browserDocument.body.appendChild(control);
+    browserDocument.body.appendChild(bait);
+    // If CSS/CSP or an unrendered document also hides the control, the result is inconclusive.
+    if (!hidden(control)) result.adBlockStatus = hidden(bait) ? "detected" : "not_detected";
+  } catch (_) {
+    result.adBlockStatus = "unknown";
+  } finally {
+    [control, bait].forEach(function (node) {
+      try { if (node && node.parentNode) node.parentNode.removeChild(node); } catch (_) {}
+    });
+  }
+  return result;
+}
+// END SHARED BROWSER DIAGNOSTICS
   var script = document.currentScript;
   if (!script || !script.dataset.site) return;
   var endpoint = new URL(script.src).origin;
@@ -14,6 +49,7 @@
   var context = null;
   var busy = false;
   var pending = false;
+  var browserDiagnostics = null;
   // Shared by ingestion and reporting. Keep the standalone pixel implementations
   // in sync; pixelLoaderSafety.test.ts exercises their output through ingestion.
   const CLICK_ID_KEYS = new Set([
@@ -97,6 +133,7 @@
     generation++;
     enabled = granted === true && navigator.globalPrivacyControl !== true;
     context = null;
+    browserDiagnostics = null;
     if (!enabled) {
       pending = false;
       visitor = null;
@@ -106,6 +143,7 @@
     try { visitor = localStorage.getItem(storageKey); } catch (_) { visitor = null; }
     if (!/^[0-9a-f-]{36}$/i.test(visitor || "")) visitor = crypto.randomUUID();
     try { localStorage.setItem(storageKey, visitor); } catch (_) { /* This visit remains memory-only. */ }
+    browserDiagnostics = collectBrowserDiagnostics(window, document, navigator);
     track();
   }
   async function track() {
@@ -119,10 +157,11 @@
       var referrer = document.referrer ? new URL(document.referrer).origin : null;
       var response = await fetch(endpoint + "/v1/collect", { method: "POST", credentials: "omit", keepalive: true,
         headers: { "Content-Type": "application/json" }, body: JSON.stringify({ siteId: site, visitorId: visitor,
-          eventId: crypto.randomUUID(), occurredAt: new Date().toISOString(), url: url, referrer: referrer }) });
+          browserDiagnostics: browserDiagnostics, eventId: crypto.randomUUID(), occurredAt: new Date().toISOString(), url: url, referrer: referrer }) });
       if (!response.ok) return;
       var result = await response.json();
       if (generation !== epoch || !permitted()) return;
+      if (result.status === "filtered") { context = null; return; }
       if (typeof result.visitorSessionId === "string" && /^[0-9a-f-]{36}$/i.test(result.visitorSessionId)) {
         context = result.visitorSessionId;
         window.dispatchEvent(new CustomEvent("open-attribution:session", { detail: getContext() }));
@@ -130,7 +169,8 @@
     } catch (_) { /* Tracking failure never prevents navigation or form submission. */ }
     finally { busy = false; if (pending) { pending = false; track(); } }
   }
-  registry.sites[site] = { consent: consent, track: track, getTrackingContext: getContext };
+  registry.sites[site] = { consent: consent, track: track, getTrackingContext: getContext,
+    getDiagnostics: function () { return permitted() && browserDiagnostics ? Object.assign({}, browserDiagnostics) : null; } };
   window.addEventListener("popstate", track);
   document.addEventListener("submit", function (event) {
     var form = event.target;
