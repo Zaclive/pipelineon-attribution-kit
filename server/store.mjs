@@ -1,9 +1,10 @@
 import { DatabaseSync } from "node:sqlite";
 import { createHash, randomUUID } from "node:crypto";
 import { KitError, safePage, sessionReference, timestamp, validateOutcome, buildTouches, buildReport, trackingDoctor } from "../core/index.mjs";
+import { openCallrailStore } from "./callrail-store.mjs";
 import { openMetaStore } from "./meta-store.mjs";
 
-export function openStore(filename, siteId, metaDestination) {
+export function openStore(filename, siteId, metaDestination, callrailConfig) {
   const db = new DatabaseSync(filename);
   db.exec(`PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000;
     CREATE TABLE IF NOT EXISTS config (id INTEGER PRIMARY KEY CHECK(id=1), site_id TEXT NOT NULL);
@@ -21,10 +22,14 @@ export function openStore(filename, siteId, metaDestination) {
   db.prepare("INSERT OR IGNORE INTO config(id,site_id) VALUES(1,?)").run(siteId);
   const hash = value => createHash("sha256").update(value).digest("hex");
   const audit = (action, id, now) => db.prepare("INSERT INTO audit(occurred_at,action,object_hash) VALUES(?,?,?)").run(now, action, hash(id));
+  let inTransaction = false;
   function transaction(run) {
+    if (inTransaction) return run();
     db.exec("BEGIN IMMEDIATE");
+    inTransaction = true;
     try { const result = run(); db.exec("COMMIT"); return result; }
     catch (error) { db.exec("ROLLBACK"); throw error; }
+    finally { inTransaction = false; }
   }
   const meta = openMetaStore(db, siteId, metaDestination, transaction, audit);
   function collect(input, origin, now) {
@@ -119,5 +124,6 @@ export function openStore(filename, siteId, metaDestination) {
     return { records: rows.slice(0, 500).map(row => JSON.parse(row.payload)), nextCursor: rows.length > 500 ? String(offset + 500) : null,
       consistency: "Pause imports during a full export to keep pagination consistent." };
   }
-  return { collect, importOutcome, report, recovery, exportOutcomes, meta, close: () => db.close() };
+  const callrail = openCallrailStore(db, callrailConfig, transaction, audit, importOutcome);
+  return { collect, importOutcome, report, recovery, exportOutcomes, meta, callrail, close: () => db.close() };
 }

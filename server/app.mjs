@@ -1,11 +1,15 @@
 import { createServer } from "node:http";
-import { createHash, createHmac, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 import { readFile } from "node:fs/promises";
+import packageInfo from "../package.json" with { type: "json" };
 import { KitError, object, normalizeCall, reportRange, validateMetaDestination } from "../core/index.mjs";
+import { validateCallrailConfig, verifyCallrailWebhook, processCallrailQueue } from "./callrail.mjs";
 import { openStore } from "./store.mjs";
 import { processMetaQueue, sendMeta } from "./meta-delivery.mjs";
 
 const STATIC = { "/": ["../public/index.html", "text/html"], "/app.js": ["../public/app.js", "text/javascript"], "/style.css": ["../public/style.css", "text/css"], "/pixel.js": ["../public/pixel.js", "text/javascript"] };
+STATIC["/callrail.js"] = ["../public/callrail.js", "text/javascript"];
+STATIC["/callrail-status.js"] = ["../public/callrail-status.js", "text/javascript"];
 STATIC["/meta.js"] = ["../public/meta.js", "text/javascript"];
 STATIC["/meta-status.js"] = ["../core/meta-status.mjs", "text/javascript"];
 const same = (a, b) => timingSafeEqual(createHash("sha256").update(a).digest(), createHash("sha256").update(b).digest());
@@ -19,7 +23,14 @@ export function createKitServer(config) {
   const meta = config.meta ? { ...validateMetaDestination({ datasetId: config.meta.datasetId, mode: config.meta.mode, testEventCode: config.meta.testEventCode }), accessToken: config.meta.accessToken } : null;
   if (meta && meta.mode !== "disabled" && (typeof meta.accessToken !== "string" || meta.accessToken.length < 20 || meta.accessToken.length > 4096))
     throw new KitError("CONFIG", "Set the server-side Meta access token before enabling delivery.", 500);
-  const store = openStore(config.database, config.siteId, meta);
+  const callrail = config.callrail ? validateCallrailConfig(config.callrail) : null;
+  const store = openStore(config.database, config.siteId, meta, callrail);
+  let pendingCallrail = null;
+  function flushCallrail() {
+    if (!pendingCallrail) pendingCallrail = processCallrailQueue(store.callrail, { limit: 5, now: () => new Date().toISOString(),
+      config: async () => callrail, fetcher: config.callrailFetch ?? fetch }).finally(() => { pendingCallrail = null; });
+    return pendingCallrail;
+  }
   let pendingFlush = null;
   function flushMeta() {
     if (!pendingFlush) pendingFlush = processMetaQueue(store.meta, { limit: 5, now: () => new Date().toISOString(),
@@ -50,7 +61,7 @@ export function createKitServer(config) {
     }
     throw new KitError("UNAUTHORIZED", write ? "A write token is required." : "Sign in or supply a read token.", 401);
   }
-  async function body(request) {
+  async function rawBody(request) {
     let length = 0;
     const chunks = [];
     for await (const chunk of request) {
@@ -58,7 +69,11 @@ export function createKitServer(config) {
       if (length > 65536) throw new KitError("BODY_TOO_LARGE", "Request exceeds 64 KiB.", 413);
       chunks.push(chunk);
     }
-    try { return object(JSON.parse(Buffer.concat(chunks).toString("utf8")), "Request"); }
+    return Buffer.concat(chunks);
+  }
+  async function body(request) {
+    const bytes = await rawBody(request);
+    try { return object(JSON.parse(bytes.toString("utf8")), "Request"); }
     catch (error) { if (error instanceof KitError) throw error; throw new KitError("INVALID_JSON", "Invalid JSON body.", 400); }
   }
   const server = createServer(async (request, response) => {
@@ -72,6 +87,11 @@ export function createKitServer(config) {
       const url = new URL(request.url, publicOrigin);
       const origin = request.headers.origin;
       rate(request.socket.remoteAddress ?? "unknown", 600);
+      if (url.pathname === "/webhooks/callrail" && request.method === "POST") {
+        if (!callrail) throw new KitError("CALLRAIL_DISABLED", "CallRail is not configured.", 503);
+        const event = verifyCallrailWebhook(await rawBody(request), request.headers.signature, callrail.signingKey, callrail.companyId);
+        send(store.callrail.enqueue(event.callId, event.digest, now), 202); return;
+      }
       if (url.pathname === "/v1/collect") {
         if (!origin || !origins.includes(origin)) throw new KitError("FORBIDDEN", "Website origin is not allowed.", 403);
         response.setHeader("Access-Control-Allow-Origin", origin);
@@ -87,7 +107,7 @@ export function createKitServer(config) {
         const [path, type] = STATIC[url.pathname];
         response.writeHead(200, { "Content-Type": `${type}; charset=utf-8` }); response.end(await readFile(new URL(path, import.meta.url))); return;
       }
-      if (url.pathname === "/health" && request.method === "GET") { send({ status: "ok", version: "0.1.0" }, 200); return; }
+      if (url.pathname === "/health" && request.method === "GET") { send({ status: "ok", version: packageInfo.version }, 200); return; }
       if (url.pathname === "/session" && request.method === "POST") {
         if (origin !== publicOrigin) throw new KitError("FORBIDDEN", "Same-origin sign-in required.", 403);
         rate(`login:${request.socket.remoteAddress}`, 10);
@@ -100,12 +120,22 @@ export function createKitServer(config) {
         if (origin !== publicOrigin) throw new KitError("FORBIDDEN", "Same-origin sign-out required.", 403);
         response.setHeader("Set-Cookie", "kit_session=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0"); send({ signedIn: false }, 200); return;
       }
-      const access = auth(request, ["/v1/outcomes", "/v1/calls", "/v1/meta/flush", "/v1/meta/retry"].includes(url.pathname) && request.method === "POST");
+      const access = auth(request, ["/v1/outcomes", "/v1/calls", "/v1/meta/flush", "/v1/meta/retry", "/v1/callrail/flush", "/v1/callrail/retry"].includes(url.pathname) && request.method === "POST");
       rate(`private:${access}`, 120);
       if (url.pathname === "/mcp" && ["GET", "DELETE"].includes(request.method)) {
         response.setHeader("Allow", "POST"); throw new KitError("METHOD_NOT_ALLOWED", "This MCP server uses stateless JSON responses and has no SSE stream.", 405);
       }
       if (url.pathname === "/v1/config" && request.method === "GET") { send({ siteId: config.siteId, name: config.name, origins, publicUrl: publicOrigin }, 200); return; }
+      if (url.pathname === "/v1/callrail" && request.method === "GET") { send(store.callrail.list(), 200); return; }
+      if (url.pathname === "/v1/callrail/flush" && request.method === "POST") { send(await flushCallrail(), 200); return; }
+      if (url.pathname === "/v1/callrail/retry" && request.method === "POST") {
+        const input = await body(request);
+        if (typeof input.callId === "string" && /^[A-Za-z0-9_-]{1,80}$/.test(input.callId) && Object.keys(input).length === 1) {
+          send(store.callrail.enqueue(input.callId, "manual_" + randomUUID(), now), 200); return;
+        }
+        if (typeof input.id !== "string" || Object.keys(input).some(key => key !== "id")) throw new KitError("INVALID_INPUT", "Supply a callId or call receipt id.", 400);
+        send(store.callrail.retry(input.id, now), 200); return;
+      }
       if (url.pathname === "/v1/meta" && request.method === "GET") { send(store.meta.list(), 200); return; }
       if (url.pathname === "/v1/meta/flush" && request.method === "POST") { send(await flushMeta(), 200); return; }
       if (url.pathname === "/v1/meta/retry" && request.method === "POST") {
@@ -131,7 +161,7 @@ export function createKitServer(config) {
         if (typeof rpc.id !== "string" && !Number.isInteger(rpc.id)) throw new KitError("INVALID_RPC", "Requests need a string or integer ID.", 400);
         let result;
         const schema = { type: "object", properties: { from: { type: "string" }, to: { type: "string" }, model: { type: "string", enum: ["first_touch", "last_touch", "last_non_direct"] } }, required: ["from", "to"], additionalProperties: false };
-        if (rpc.method === "initialize") result = { protocolVersion: "2025-06-18", capabilities: { tools: {} }, serverInfo: { name: "PipelineOn Open Attribution", version: "0.1.0" }, instructions: "Report observed evidence and missing coverage. Revenue is completed payments, never predicted sales. Tools are read-only; no messages or ad conversions are sent." };
+        if (rpc.method === "initialize") result = { protocolVersion: "2025-06-18", capabilities: { tools: {} }, serverInfo: { name: "PipelineOn Open Attribution", version: packageInfo.version }, instructions: "Report observed evidence and missing coverage. Revenue is completed payments, never predicted sales. Tools are read-only; no messages or ad conversions are sent." };
         else if (rpc.method === "ping") result = {};
         else if (rpc.method === "tools/list") result = { tools: [
           ["get_attribution_report", "Read revenue, outcomes and source attribution."], ["check_tracking_health", "Diagnose stored traffic and outcome evidence."], ["get_unconverted_browsers", "Review browsers without recorded conversions; this does not identify people."],
@@ -170,9 +200,14 @@ export function createKitServer(config) {
     flushMeta().catch(() => console.warn("[WARN] Meta worker failed; durable leases will be recovered. Inspect delivery status."));
   }, 5000) : null;
   timer?.unref();
-  return { server, store, flushMeta, close: async () => {
+  const callrailTimer = callrail && config.callrailAutoStart !== false ? setInterval(() => {
+    flushCallrail().catch(() => console.warn("[WARN] CallRail worker failed; inspect durable call receipts."));
+  }, 5000) : null;
+  callrailTimer?.unref();
+  return { server, store, flushMeta, flushCallrail, close: async () => {
     if (timer) clearInterval(timer);
+    if (callrailTimer) clearInterval(callrailTimer);
     await new Promise((resolve, reject) => { server.close(error => { if (error) reject(error); else resolve(); }); server.closeIdleConnections(); });
-    try { if (pendingFlush) await pendingFlush; } finally { store.close(); }
+    try { await Promise.all([pendingFlush, pendingCallrail]); } finally { store.close(); }
   } };
 }

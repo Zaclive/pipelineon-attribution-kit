@@ -6,6 +6,8 @@ This is an attribution foundation, not full HYROS or AIR parity. It does not ide
 
 ## Connect your data, using the route you choose
 
+Implementation guides: [CRM and middleware setup](INTEGRATIONS.md), [CallRail call matching](CALLRAIL.md), and [CRM API access options](CRM-ACCESS.md). They cover the bundled CallRail connector and both destinations, plus the adapter work needed for other CRMs.
+
 Install the pixel, keep its session reference with the enquiry, and connect your business outcomes to one authenticated API. You can use your backend, a CRM workflow or an automation tool. All routes feed the same attribution engine; a native connector is optional.
 
 ```text
@@ -200,7 +202,7 @@ Send the normalized `examples/call.json` shape to `POST /v1/calls`. Provider acc
 
 This is a bring-your-own-provider bridge, not a direct provider marketplace connection. Your trusted relay, Zapier or Make workflow normalizes the provider event and supplies the write token. Do not point a raw, unauthenticated provider webhook at this endpoint.
 
-- **CallRail:** use Post-Call and Call Modified events. Verify CallRail's `Signature` against the **raw request body**, using the company's signing key and HMAC-SHA1/base64 as documented. Pin the expected company. `examples/callrail-adapter.mjs` maps a verified payload, while requiring your authoritative source revision and qualification explicitly. CallRail's call start time is not a correction revision: do not use receipt time blindly, and do not let an older retried webhook overwrite newer state. Re-read authoritative provider data if versions are uncertain. [CallRail API](https://apidocs.callrail.com/)
+- **CallRail:** the bundled receiver, API refresh worker, browser cookie bridge and receipts are configured in [CALLRAIL.md](CALLRAIL.md). Use Post-Call and Call Modified events. Verify CallRail's `Signature` against the **raw request body**, using the company's signing key and HMAC-SHA1/base64 as documented. Pin the expected company. `examples/callrail-adapter.mjs` remains a pure mapper for custom middleware; the bundled connector performs authentication, current-state reads and durable versioning itself. CallRail's call start time is not a correction revision: do not use receipt time blindly, and do not let an older retried webhook overwrite newer state. Re-read authoritative provider data if versions are uncertain. [CallRail API](https://apidocs.callrail.com/)
 - **Ringba:** configure its completed/finalized tracking pixel or use your existing automation. Map the documented `[Call:InboundCallId]` and `[Call:CallDateTime]`, plus explicit account, version and status, to our JSON. Bind the accepted browser session through your own integration; a phone number or similar timestamp alone is not a session match. [Ringba tokens](https://support.ringba.com/hc/en-us/articles/17993303467799-Most-Common-Tokens), [Ringba automation](https://support.ringba.com/hc/en-us/articles/17997458506135-Integromat)
 - Qualification must come from an explicit disposition. Duration alone does not establish a qualified enquiry. Revenue should arrive separately from the authoritative payment system.
 
