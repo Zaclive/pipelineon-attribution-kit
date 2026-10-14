@@ -30,7 +30,7 @@ Only `payment_received` sends monetary conversion value. Quotes and won jobs are
 }
 ```
 
-This records a $1,250.50 payment without requesting any advertising delivery. Add the optional `meta` and/or `googleAds` envelopes only when this service owns delivery and permissioned matching data is available. See the Meta example in [Meta delivery](meta.md#send-eligible-outcomes-to-meta) and [Google Ads setup](GOOGLE-ADS.md). The endpoint determines `eventType`, `outcome` and qualification from the name; callers cannot override those meanings.
+This records a $1,250.50 payment without requesting any advertising delivery. Add the optional `meta` and/or `googleAds` envelopes only when this service owns delivery and permissioned matching data is available. See the Meta example in [Meta delivery](meta.md#send-eligible-outcomes-to-meta) and [Google Ads setup](google-ads.md). The endpoint determines `eventType`, `outcome` and qualification from the name; callers cannot override those meanings.
 
 ## Identity, matching and consent
 

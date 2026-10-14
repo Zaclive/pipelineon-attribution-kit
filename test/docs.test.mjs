@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readdirSync, readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { dirname, resolve, relative } from 'node:path';
+import { dirname, resolve, relative, sep } from 'node:path';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const files = [...readdirSync(root).filter(name => name.endsWith('.md')),
@@ -21,6 +21,15 @@ function headings(text) {
   return anchors;
 }
 
+function exactPath(path) {
+  let cursor = root;
+  for (const part of relative(root, path).split(sep)) {
+    if (part === '..' || !readdirSync(cursor).includes(part)) return false;
+    cursor = resolve(cursor, part);
+  }
+  return true;
+}
+
 test('all local documentation links and section anchors resolve in the distributed bundle', () => {
   const failures = [];
   for (const name of files) {
@@ -30,7 +39,7 @@ test('all local documentation links and section anchors resolve in the distribut
       if (/^[a-z]+:/i.test(target)) continue;
       const [file, anchor] = target.split('#');
       const destination = file ? resolve(dirname(path), decodeURIComponent(file)) : path;
-      if (relative(root, destination).startsWith('..') || !existsSync(destination)) { failures.push(name + ': ' + target); continue; }
+      if (relative(root, destination).startsWith('..') || !existsSync(destination) || !exactPath(destination)) { failures.push(name + ': ' + target); continue; }
       if (anchor && destination.endsWith('.md') && !headings(readFileSync(destination, 'utf8')).has(decodeURIComponent(anchor))) failures.push(name + ': ' + target);
     }
   }

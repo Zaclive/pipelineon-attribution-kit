@@ -22,7 +22,7 @@ flowchart LR
   C --> A[Connector or adapter]
   A --> I[Outcome API]
   I --> R[Source and revenue report]
-  I --> M[Optional Meta delivery receipt]
+  I --> M[Optional ad delivery receipt]
 ```
 
 | Step | Instructions | Proof before continuing |
