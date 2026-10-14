@@ -63,7 +63,7 @@ test("partial and ambiguous links are explicit and models do not double count", 
   assert.equal(report.linkedOutcomes, 1);
   assert.equal(report.partialHistories, 1);
   assert.equal(report.groups.find(row => row.source === "facebook").payments, 1);
-  assert.equal(buildReport(rows, { ...range, model: "first_touch" }, coverage).groups.find(row => row.source === "google").payments, 1);
+  assert.equal(buildReport(rows, { ...range, model: "first_touch" }, coverage).groups.find(row => row.source === "Google (unclassified)").payments, 1);
   assert.equal(buildReport(rows, { ...range, model: "last_touch" }, coverage).groups.find(row => row.source === "Direct").payments, 1);
   assert.equal(report.medianHoursToPayment, 52);
 });

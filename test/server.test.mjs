@@ -44,7 +44,7 @@ test("HTTP tagged visit → call/form/payment → durable attribution, with auth
     assert.equal((await json("/v1/report?" + params, {})).status, 401);
     const read = path => json(path, { headers: { authorization: `Bearer ${config.readToken}` } });
     const report = (await read("/v1/report?" + params)).body;
-    assert.equal(report.report.groups[0].source, "google");
+    assert.equal(report.report.groups[0].source, "Google (unclassified)");
     assert.equal(report.report.totals.outcomes, 3);
     assert.equal(report.report.linkedOutcomes, 3);
     assert.equal(report.report.totals.revenueByCurrency.USD, 125050);

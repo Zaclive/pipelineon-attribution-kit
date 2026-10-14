@@ -24,14 +24,22 @@ function render(data) {
   current = data;
   const r = data.report;
   $("coverage").hidden = !r.coverage.limited && !r.partialHistories;
-  $("coverage").textContent = r.coverage.limited ? "This report reached a data limit. Totals are a sample; narrow the date range before making decisions." : `${r.partialHistories} outcomes have incomplete visit history. First-touch attribution may be incomplete.`;
-  const metrics = [["Recorded outcomes", String(r.totals.outcomes), `${r.totals.calls} calls · ${r.totals.forms} forms`], ["Connected to a visit", String(r.linkedOutcomes), `${r.unlinkedOutcomes} still unattributed`], ["Payment revenue", monies(r.totals.revenueByCurrency), `${r.totals.payments} completed payments`], ["Qualified outcomes", String(r.totals.qualifiedOutcomes), "Qualification supplied by your source"]];
+  $("coverage").textContent = r.coverage.limited ? "Outcome coverage is incomplete. Choose a shorter period before making decisions." : `All saved activities are included. ${r.partialHistories} have incomplete visit history, so their attribution may be incomplete.`;
+  const metrics = [["Conversions", String(r.totals.conversions), "Received or completed forms, calls, bookings and payments"], ["Connected conversions", String(r.linkedConversions), `${r.unlinkedConversions} still unattributed`], ["Payment revenue", monies(r.totals.revenueByCurrency), `${r.totals.payments} completed payments`], ["Stage changes", String(r.totals.stageChanges), "CRM activity, separate from conversions"]];
   $("metrics").replaceChildren(...metrics.map(([label, value, hint]) => { const box = el("article", "", "metric"); box.append(el("span", label, "label"), el("strong", value), el("span", hint, "hint")); return box; }));
+  $("report-summary").textContent = `${r.totals.outcomes} saved activities across the full period: ${r.totals.conversions} conversions, ${r.totals.stageChanges} stage changes and ${r.totals.otherActivities} other. ${r.totals.calls} calls · ${r.totals.forms} forms · ${r.totals.qualifiedOutcomes} source-qualified activities. Revenue uses completed payments only.`;
   const table = $("source-table"); table.replaceChildren();
   if (!r.groups.length) table.append(el("p", "Your first report starts with a recorded outcome. Install the pixel and import a form, call or payment.", "empty"));
   else {
-    const heading = el("div", "", "source-row table-head"); heading.append(el("div", "Source / campaign"), el("div", "Events", "count"), el("div", "Revenue", "money")); table.append(heading);
-    for (const group of r.groups) { const row = el("div", "", "source-row"); const label = el("div", group.source); label.append(el("span", group.campaign || "No campaign recorded", "campaign")); row.append(label, el("div", String(group.outcomes), "count"), el("div", monies(group.revenueByCurrency), "money")); table.append(row); }
+    const heading = el("div", "", "source-row table-head"); heading.append(el("div", "Source / campaign"), el("div", "Conv.", "count"), el("div", "Stages", "count"), el("div", "Revenue", "money")); table.append(heading);
+    for (const group of r.groups) {
+      const row = el("div", "", "source-row"); const label = el("div", group.source);
+      label.append(el("span", group.campaign || "No campaign recorded", "campaign"));
+      for (const [field, value] of Object.entries(group.campaignIds)) label.append(el("span", `${field}: ${value}`, "campaign"));
+      if (group.campaignConflict) label.append(el("span", "Campaign ID conflict", "campaign-conflict"));
+      if (group.otherActivities) label.append(el("span", `${group.otherActivities} other activities`, "campaign"));
+      row.append(label, el("div", String(group.conversions), "count"), el("div", String(group.stageChanges), "count"), el("div", monies(group.revenueByCurrency), "money")); table.append(row);
+    }
   }
   $("checks").replaceChildren(...data.doctor.checks.map(check => {
     const row = el("div", "", `check ${check.status}`); const detail = el("div", ""); detail.append(el("strong", check.title), el("p", check.detail));
@@ -43,6 +51,7 @@ async function load() {
   const revision = ++loadRevision;
   current = null;
   $("metrics").replaceChildren();
+  $("report-summary").textContent = "";
   $("source-table").replaceChildren(el("p", "Loading report…", "empty"));
   $("checks").replaceChildren();
   $("coverage").hidden = true;

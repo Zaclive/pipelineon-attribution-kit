@@ -84,18 +84,16 @@ export function openStore(filename, siteId, metaDestination, callrailConfig, goo
     });
   }
   function report(range, now) {
-    const raw = db.prepare("SELECT payload FROM outcomes WHERE occurred_at>=? AND occurred_at<? ORDER BY occurred_at,source,external_id LIMIT 1001").all(range.from, range.to);
-    const events = raw.slice(0, 1000).map(row => JSON.parse(row.payload));
+    const raw = db.prepare("SELECT payload FROM outcomes WHERE occurred_at>=? AND occurred_at<? ORDER BY occurred_at,source,external_id LIMIT 100001").all(range.from, range.to);
+    if (raw.length > 100000) throw new KitError("REPORT_TOO_LARGE", "This period has too much evidence for one report. Choose a shorter period; no partial totals were returned.", 422);
+    const events = raw.map(row => JSON.parse(row.payload));
     const histories = new Map();
-    let remainingPages = 5000;
     for (const event of events) {
       if (!event.visitorSessionId || histories.has(event.visitorSessionId)) continue;
-      if (histories.size >= 50 || remainingPages === 0) { histories.set(event.visitorSessionId, "limited"); continue; }
       const session = db.prepare("SELECT id FROM sessions WHERE id=?").get(event.visitorSessionId);
       if (!session) { histories.set(event.visitorSessionId, null); continue; }
-      const pages = db.prepare("SELECT id,url,referrer,occurred_at AS occurredAt,session_id AS visitorId FROM visits WHERE session_id=? ORDER BY occurred_at,id LIMIT ?").all(session.id, remainingPages + 1);
-      histories.set(event.visitorSessionId, pages.length > remainingPages ? "limited" : pages);
-      remainingPages = Math.max(0, remainingPages - pages.length);
+      const pages = db.prepare("SELECT id,url,referrer,occurred_at AS occurredAt,session_id AS visitorId FROM visits WHERE session_id=? AND occurred_at<? ORDER BY occurred_at,id LIMIT 5001").all(session.id, range.to);
+      histories.set(event.visitorSessionId, pages.length > 5000 ? "limited" : pages);
     }
     const attributed = events.map(event => {
       const history = histories.get(event.visitorSessionId);
@@ -104,7 +102,7 @@ export function openStore(filename, siteId, metaDestination, callrailConfig, goo
       const touches = buildTouches(history, event.occurredAt);
       return { ...event, attribution: { status: touches.firstTouch ? "linked" : "unlinked", evidence: "session_reference", touches } };
     });
-    const coverage = { limited: raw.length > 1000 || attributed.some(row => row.attribution.status === "history_limited"), inspected: events.length, limit: 1000 };
+    const coverage = { limited: false, inspected: events.length, limit: 100000 };
     const result = buildReport(attributed, range, coverage);
     const pages = db.prepare("SELECT url,occurred_at FROM visits WHERE occurred_at>=? AND occurred_at<? ORDER BY occurred_at DESC LIMIT 1000").all(range.from, range.to);
     const telemetry = { lastPageviewAt: pages[0]?.occurred_at ?? null, taggedPageviews: pages.filter(row => Object.keys(safePage(row.url)?.parameters ?? {}).length > 0).length, checkedAt: now };

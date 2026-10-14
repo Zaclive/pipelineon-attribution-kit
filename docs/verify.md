@@ -47,6 +47,12 @@ On desktop/mobile test consent denial/withdrawal, GPC, blocked storage, slow col
 
 Using test credentials/data, exercise revoked access, provider throttling and worker interruption. Failures must be visible and recover without duplicate facts. Do not manufacture production outages or replay customer payments for these tests.
 
+## Campaign and full-period reporting
+
+Visit a consented URL with `utm_source=google&utm_medium=ppc&gad_campaignid=123&hsa_cam=123`, record a form against its accepted session, and verify Google Ads / Campaign ID 123. Repeat with `hsa_cam=456`: the report must retain both named fields and show a conflict without selecting a campaign. A Google referrer without paid tags belongs in Google referral. Test first, last and last non-direct models independently; never combine IDs across different touches.
+
+Import more than 1,000 unique forms and stage changes in a period. Verify complete totals and export counts, with stage changes separate from conversions. Missed calls, failed bookings and won stages must not create successful conversions or payment revenue. History limits must warn about visit evidence without truncating activity totals. Confirm reporting sends nothing to advertising destinations and does not alter billing or recovery permissions.
+
 ## Handoff
 
 ```text
