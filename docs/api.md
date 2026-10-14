@@ -113,6 +113,6 @@ The hosted read route is `GET /api/v1/attribution` with siteId and `traffic:read
 
 Meta setup and receipt history are available on `/attribution`. A signed-in operator configures the website destination. `GET /api/v1/attribution/meta?siteId=...` and MCP `get_meta_delivery_receipts` require `customers:read`. Imported event records accept the same optional `meta` envelope through `data:write` authorization. Use JSON imports for the nested envelope. Read-only MCP connections cannot enqueue conversions; an authorized write integration is required.
 
-Its report bounds are 100 outcomes, up to 1,000 candidate records in the date superset, and bounded existing journey lookups; every truncation is disclosed.
+Hosted reports paginate all saved outcomes in the requested period and reject oversized evidence scans with `REPORT_TOO_LARGE`; they do not return the earliest 100 outcomes. Existing per-batch journey bounds remain in place and incomplete visit evidence is disclosed separately from full activity totals.
 
 The kit accepts at most 64 KiB per request. `visitorSessionId` must be a valid UUID or null/omitted; an empty string is invalid. Normalize an empty form field before importing. Keep successful enquiries even when tracking is unavailable.
