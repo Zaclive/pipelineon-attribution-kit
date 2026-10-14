@@ -29,8 +29,8 @@ test("saved campaign IDs replace missing campaign labels and conflicts retain ev
   assert.equal(JSON.stringify(r).includes("private-click"), false);
   assert.equal(trackingDoctor(r, { checkedAt: at, taggedPageviews: 1, lastPageviewAt: at }).checks.find(c => c.id === "campaign_conflicts").status, "action");
 });
-test("numeric UTM campaign IDs conflict, names remain names, distinct ID evidence never merges", () => {
-  for (const [utm_campaign, expected] of [["111", true], ["Roofing", false]]) {
+test("numeric UTM campaign names stay separate, distinct platform ID evidence never merges", () => {
+  for (const [utm_campaign, expected] of [["111", false], ["Roofing", false]]) {
     const r = buildReport([linked({ utm_source: "google", utm_medium: "CPC", utm_campaign, gad_campaignid: "222" }, null)], range, coverage);
     assert.equal(r.groups[0].campaign, utm_campaign);
     assert.equal(r.groups[0].campaignConflict, expected);

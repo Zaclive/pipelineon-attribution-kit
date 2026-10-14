@@ -5,9 +5,9 @@ export function matchFormVisit(form: { siteId: string; identityKey: string | nul
 export type Model = "first_touch" | "last_touch" | "last_non_direct";
 export const MODELS: Model[];
 export interface Touch { url: string; referrer: string | null; occurredAt: string; visitorId: string | null; parameters: Record<string, string>; sourceLabel: string; }
-export interface Touches { firstTouch: Touch | null; lastTouch: Touch | null; lastNonDirectTouch: Touch | null; historyLimited: boolean; }
+export interface Touches { timeline?: Touch[]; firstTouch: Touch | null; lastTouch: Touch | null; lastNonDirectTouch: Touch | null; historyLimited: boolean; }
 export interface Outcome { externalId: string; source: string; eventType: string; occurredAt: string; sourceUpdatedAt: string; outcome: string; qualification: string; visitorSessionId: string | null; amountMinor: number | null; currency: string | null; deleted: boolean; contactIds: string[]; direction: string; label: string; meta?: MetaEnvelope; googleAds?: GoogleEnvelope; businessEvent?: BusinessEvent; }
-export interface ReportRow { externalId: string; source: string; eventType: string; occurredAt: string | null; sourceUpdatedAt: string; outcome: string; qualification?: string; amountMinor?: number | null; currency?: string | null; deleted: boolean; attribution?: { status: string; evidence: string | null; touches: Touches | null }; }
+export interface ReportRow { externalId: string; source: string; eventType: string; occurredAt: string | null; sourceUpdatedAt: string; outcome: string; qualification?: string; amountMinor?: number | null; currency?: string | null; deleted: boolean; attribution?: { status: string; evidence: string | null; touches: Touches | null; person?: PersonReference }; }
 export interface Range { from: string; to: string; model: Model; }
 export interface Coverage { limited: boolean; inspected: number; limit: number; }
 export interface Totals { outcomes: number; conversions: number; stageChanges: number; otherActivities: number; calls: number; missedCalls: number; forms: number; bookings: number; qualifiedOutcomes: number; payments: number; unknownValuePayments: number; revenueByCurrency: Record<string, number>; }
@@ -26,6 +26,14 @@ export function buildTouches(observations: Array<{ url: string; referrer: string
 export function buildReport(rows: ReportRow[], range: Range, coverage: Coverage): Report;
 export function trackingDoctor(report: Report, telemetry: Telemetry): Doctor;
 export function formatMoney(amount: number, currency: string): string;
+export function normalizeUtmParameters(parameters: Record<string, string>): Record<string, string>;
+export function campaignIdEvidence(parameters: Record<string, string>): { campaignIds: Record<string,string>; campaignConflict: boolean; campaignId: string | null; taxonomyId: string | null };
+export interface CampaignSummary { source: string; campaign: string; campaignIds: Record<string,string>; campaignConflict: boolean; }
+export interface Report { journeys?: Array<{ first: CampaignSummary | null; last: CampaignSummary | null; lastNonDirect: CampaignSummary | null; activities: number; conversions: number }>; journeysLimited?: boolean; }
+export interface Touch { normalizedParameters?: Record<string,string>; }
+export function campaignEvidence(touch: Touch | null): CampaignSummary & { groupId: string };
+export const HUBSPOT_ATTRIBUTION_PROPERTIES: string[];
+export function hubspotAttributionProperties(touches: Touches, existing: Record<string,string | null | undefined>, visitorSessionId: string): Record<string,string>;
 export interface MetaEnvelope {
   version: 1; deliveryOwner: "self" | "external"; consent: "granted" | "denied"; dataProvenance: "customer_provided";
   deduplication: "server_only" | "shared_event_id"; eventId: string | null;
@@ -60,3 +68,9 @@ export function validateGoogle(raw: unknown): GoogleEnvelope;
 export function validateGoogleDestination(raw: unknown): GoogleDestination;
 export function googleEligibility(outcome: Outcome, destination: GoogleDestination, now: string): string | null;
 export function googleRetry(attempt: number, firstAttemptAt: string, eventTime: string, now: string, retryAfterSeconds: number | null | undefined): string | null;
+export interface PersonClaim { personId: string; visitorSessionId: string; occurredAt: string; }
+export interface PersonReference { id: string; provider: "hubspot"; accountId: string; contactId: string; browserCount: number; }
+export interface PersonResolution { status: "linked" | "unlinked" | "ambiguous"; personId: string | null; sessionIds: string[]; }
+export interface PersonSummary extends PersonReference { activities: number; occurredAt: string; status: string; touches: Touches | null; }
+export function resolvePersonSessions(personId: string | null, claims: PersonClaim[], cutoffAt: string): PersonResolution;
+export function summarizePeople(rows: Array<{ occurredAt: string | null; attribution?: { status: string; touches: Touches | null; person?: PersonReference } }>): PersonSummary[];

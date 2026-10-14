@@ -28,6 +28,40 @@ function render(data) {
   $("coverage").textContent = r.coverage.limited ? "Outcome coverage is incomplete. Choose a shorter period before making decisions." : `All saved activities are included. ${r.partialHistories} have incomplete visit history, so their attribution may be incomplete.`;
   const metrics = [["Conversions", String(r.totals.conversions), "Received or completed forms, calls, bookings and payments"], ["Connected conversions", String(r.linkedConversions), `${r.unlinkedConversions} still unattributed`], ["Payment revenue", monies(r.totals.revenueByCurrency), `${r.totals.payments} completed payments`], ["Stage changes", String(r.totals.stageChanges), "CRM activity, separate from conversions"]];
   $("metrics").replaceChildren(...metrics.map(([label, value, hint]) => { const box = el("article", "", "metric"); box.append(el("span", label, "label"), el("strong", value), el("span", hint, "hint")); return box; }));
+  const journeys = $("journeys"); journeys.replaceChildren(); journeys.hidden = !r.journeys?.length;
+  const people = $("people"); people.replaceChildren(); people.hidden = !data.people?.length;
+  if (data.people?.length) {
+    people.append(el("h2", "People and campaign history"), el("p", "Our person IDs connect verified browsers to CRM contacts. Snapshots stop at each person's latest activity in this report; changing credit models preserves history.", "small"));
+    for (const person of data.people.slice(0,12)) {
+      const item = el("article", "", "panel"); item.append(el("strong", `PipelineOn person: ${person.id}`), el("p", `${person.browserCount} verified browsers · ${person.activities} saved activities · ${person.status.replaceAll("_", " ")}`, "small"));
+      const link = el("a", "Open HubSpot contact"); link.href = `https://app.hubspot.com/contacts/${encodeURIComponent(person.accountId)}/record/0-1/${encodeURIComponent(person.contactId)}`; link.target = "_blank"; link.rel = "noreferrer"; item.append(link);
+      if (person.status === "ambiguous") item.append(el("p", "A browser has claims from different contacts. Identities have not been merged and campaign credit is withheld.", "notice"));
+      const touches = person.touches?.timeline ?? [];
+      const detail = el("details", ""); detail.append(el("summary", `View observed campaign touches (${touches.length})`));
+      const history = el("ol", "");
+      for (const touch of touches.slice(0,50)) {
+        const p = touch.normalizedParameters ?? touch.parameters;
+        const row = el("li", `${new Date(touch.occurredAt).toLocaleString()} · ${p.utm_source || touch.sourceLabel} · ${p.utm_campaign || "No campaign recorded"}`);
+        for (const key of ["gad_campaignid", "hsa_cam", "gc_id", "campaign_id", "utm_id"]) if (p[key]) row.append(el("p", `${key}: ${p[key]}`, "small"));
+        history.append(row);
+      }
+      detail.append(history); item.append(detail);
+      if (touches.length > 50 || person.touches?.historyLimited) item.append(el("p", "Displayed or retained history is limited.", "small"));
+      people.append(item);
+    }
+    if (data.people.length >= 12) people.append(el("p", "Showing up to 12 people. Export includes up to 100 snapshots.", "small"));
+  }
+  if (r.journeys?.length) {
+    journeys.append(el("h2", "First and returning campaigns"), el("p", "The credit selector changes the report, not the saved history. Direct and last non-direct touches stay separate. Counts describe activities, not unique people.", "small"));
+    for (const journey of r.journeys.slice(0,12)) {
+      const row = el("article", "", "journey-row");
+      for (const [label,touch] of [["First recorded touch",journey.first],["Latest non-direct touch",journey.lastNonDirect],["Latest touch",journey.last]]) {
+        const column = el("div", ""); column.append(el("strong",label),el("p",touch ? `${touch.source} · ${touch.campaign || "No campaign recorded"}` : "Not recorded")); row.append(column);
+      }
+      row.append(el("p",`${journey.conversions} ${journey.conversions === 1 ? "conversion" : "conversions"} · ${journey.activities} ${journey.activities === 1 ? "activity" : "activities"}`,"journey-count")); journeys.append(row);
+    }
+    if (r.journeys.length > 12 || r.journeysLimited) journeys.append(el("p","Showing 12 summaries. Export includes up to 100; source totals include all selected activities.","small"));
+  }
   $("report-summary").textContent = `${r.totals.outcomes} saved activities across the full period: ${r.totals.conversions} conversions, ${r.totals.stageChanges} stage changes and ${r.totals.otherActivities} other. ${r.totals.calls} calls · ${r.totals.forms} forms · ${r.totals.qualifiedOutcomes} source-qualified activities. Revenue uses completed payments only.`;
   const table = $("source-table"); table.replaceChildren();
   if (!r.groups.length) table.append(el("p", "Your first report starts with a recorded outcome. Install the pixel and import a form, call or payment.", "empty"));
@@ -52,6 +86,8 @@ async function load() {
   const revision = ++loadRevision;
   current = null;
   $("metrics").replaceChildren();
+  $("journeys").replaceChildren(); $("journeys").hidden = true;
+  $("people").replaceChildren(); $("people").hidden = true;
   $("report-summary").textContent = "";
   $("source-table").replaceChildren(el("p", "Loading report…", "empty"));
   $("checks").replaceChildren();

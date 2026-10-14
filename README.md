@@ -13,6 +13,8 @@ An MIT-licensed kit that connects consented website visits to CRM outcomes and r
 | Use Google Tag Manager | [GTM](docs/gtm.md) |
 | Connect a CRM, API, CSV or offline activity | [CRM mapping and middleware](docs/crm.md) |
 | Find a CRM's access route | [CRM access](docs/crm-access.md) |
+| Keep original and returning campaigns in HubSpot | [HubSpot attribution mapping](docs/hubspot-attribution.md) |
+| Keep our own person ID, CRM link and campaign history | [People and verified browser links](docs/people.md) |
 | Connect website-pool calls | [CallRail](docs/callrail.md) |
 | Name confirmed business milestones | [Business events](docs/events.md) |
 | Configure Google Ads delivery | [Google Ads](docs/google-ads.md) |

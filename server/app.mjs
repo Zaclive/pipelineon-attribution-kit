@@ -134,12 +134,13 @@ export function createKitServer(config) {
         if (origin !== publicOrigin) throw new KitError("FORBIDDEN", "Same-origin sign-out required.", 403);
         response.setHeader("Set-Cookie", "kit_session=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0"); send({ signedIn: false }, 200); return;
       }
-      const access = auth(request, ["/v1/events", "/v1/outcomes", "/v1/calls", "/v1/meta/flush", "/v1/meta/retry", "/v1/google/flush", "/v1/google/retry", "/v1/callrail/flush", "/v1/callrail/retry"].includes(url.pathname) && request.method === "POST");
+      const access = auth(request, ["/v1/identities/hubspot", "/v1/events", "/v1/outcomes", "/v1/calls", "/v1/meta/flush", "/v1/meta/retry", "/v1/google/flush", "/v1/google/retry", "/v1/callrail/flush", "/v1/callrail/retry"].includes(url.pathname) && request.method === "POST");
       rate(`private:${access}`, 120);
       if (url.pathname === "/mcp" && ["GET", "DELETE"].includes(request.method)) {
         response.setHeader("Allow", "POST"); throw new KitError("METHOD_NOT_ALLOWED", "This MCP server uses stateless JSON responses and has no SSE stream.", 405);
       }
       if (url.pathname === "/v1/config" && request.method === "GET") { send({ siteId: config.siteId, name: config.name, origins, publicUrl: publicOrigin }, 200); return; }
+      if (url.pathname === "/v1/identities/hubspot" && request.method === "POST") { send(store.people.linkHubSpot(await body(request), now), 200); return; }
       if (url.pathname === "/v1/callrail" && request.method === "GET") { send(store.callrail.list(), 200); return; }
       if (url.pathname === "/v1/callrail/flush" && request.method === "POST") { send(await flushCallrail(), 200); return; }
       if (url.pathname === "/v1/callrail/retry" && request.method === "POST") {

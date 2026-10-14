@@ -6,3 +6,6 @@ export * from "./meta-status.mjs";
 export * from "./events.mjs";
 export * from "./google.mjs";
 export * from "./form-link.mjs";
+export * from "./utm.mjs";
+export * from "./crm-attribution.mjs";
+export { resolvePersonSessions, summarizePeople } from "./person.mjs";

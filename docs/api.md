@@ -116,3 +116,6 @@ Meta setup and receipt history are available on `/attribution`. A signed-in oper
 Hosted reports paginate all saved outcomes in the requested period and reject oversized evidence scans with `REPORT_TOO_LARGE`; they do not return the earliest 100 outcomes. Existing per-batch journey bounds remain in place and incomplete visit evidence is disclosed separately from full activity totals.
 
 The kit accepts at most 64 KiB per request. `visitorSessionId` must be a valid UUID or null/omitted; an empty string is invalid. Normalize an empty form field before importing. Keep successful enquiries even when tracking is unavailable.
+# Person identity links
+
+`POST /v1/identities/hubspot` requires the write token and an already imported, verified form enquiry. Its body is `{ "source": "hubspot_main", "externalId": "enquiry-001", "accountId": "123", "contactId": "101" }`. It returns a stable site-owned `personId` and `duplicate` flag. It does not create a HubSpot contact or grant CRM access. Use one outcome source per portal. Read the full [identity evidence and correction contract](people.md) before connecting an adapter. `/v1/report` includes up to 100 `people` snapshots alongside the aggregate `report`.

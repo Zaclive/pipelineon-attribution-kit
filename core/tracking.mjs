@@ -1,5 +1,6 @@
 import { timestamp } from "./primitives.mjs";
 import { safeAttributionParameter } from "./parameters.mjs";
+import { normalizeUtmParameters } from "./utm.mjs";
 const PRIVATE_VALUE = /[\x00-\x1f\x7f<>@]|(?:bearer\s|password|access_token|api_key|secret=)/i;
 export function safePage(value) {
   if (typeof value !== "string" || value.length > 8192) return null;
@@ -28,17 +29,18 @@ function referrerOrigin(value, pageOrigin) {
   return new URL(page.origin).hostname.replace(/^www\./, "") === new URL(pageOrigin).hostname.replace(/^www\./, "") ? null : page.origin;
 }
 function sourceLabel(parameters, referrer) {
-  if (parameters.utm_source) return parameters.utm_source;
+  if (parameters.utm_source && parameters.utm_source !== "direct") return parameters.utm_source;
   if (parameters.gclid || parameters.gbraid || parameters.wbraid || parameters.gc_id) return "Google";
   if (parameters.fbclid || parameters.fbc_id) return "Facebook";
   if (parameters.msclkid) return "Microsoft";
   if (parameters.ttclid) return "TikTok";
+  if (parameters.utm_source === "direct") return referrer ? new URL(referrer).hostname : "Direct";
   if (Object.keys(parameters).length) return "Tagged campaign";
   return referrer ? new URL(referrer).hostname : "Direct";
 }
 export function buildTouches(observations, cutoffAt) {
   const cutoff = Date.parse(timestamp(cutoffAt, "cutoffAt"));
-  const result = { firstTouch: null, lastTouch: null, lastNonDirectTouch: null, historyLimited: false };
+  const result = { timeline: [], firstTouch: null, lastTouch: null, lastNonDirectTouch: null, historyLimited: false };
   const prior = new Map();
   const sorted = observations.filter(row => Number.isFinite(Date.parse(row.occurredAt)) && Date.parse(row.occurredAt) <= cutoff)
     .slice().sort((a, b) => Date.parse(a.occurredAt) - Date.parse(b.occurredAt) || String(a.id ?? "").localeCompare(String(b.id ?? "")));
@@ -46,7 +48,8 @@ export function buildTouches(observations, cutoffAt) {
     const page = safePage(row.url);
     if (!page) continue;
     const referrer = referrerOrigin(row.referrer, page.origin);
-    const signature = JSON.stringify(Object.entries(page.parameters).sort(([a], [b]) => a.localeCompare(b)));
+    const normalizedParameters = normalizeUtmParameters(page.parameters);
+    const signature = JSON.stringify(Object.entries(normalizedParameters).sort(([a], [b]) => a.localeCompare(b)));
     const id = row.visitorId ?? "unknown";
     const previous = prior.get(id);
     const at = Date.parse(row.occurredAt);
@@ -55,7 +58,8 @@ export function buildTouches(observations, cutoffAt) {
     prior.set(id, { at, signature: newVisit || newSource ? signature : previous.signature, referrer: newVisit || newSource ? referrer : previous.referrer });
     if (!newVisit && !newSource) continue;
     const touch = { url: page.url, referrer, occurredAt: new Date(at).toISOString(), visitorId: row.visitorId ?? null,
-      parameters: page.parameters, sourceLabel: sourceLabel(page.parameters, referrer) };
+      parameters: page.parameters, normalizedParameters, sourceLabel: sourceLabel(normalizedParameters, referrer) };
+    result.timeline.push(touch);
     result.firstTouch ??= touch;
     result.lastTouch = touch;
     if (touch.sourceLabel !== "Direct") result.lastNonDirectTouch = touch;
