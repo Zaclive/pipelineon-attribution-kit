@@ -1,0 +1,30 @@
+<script>
+(function () {
+  var site = 'your-website';
+  var origin = 'https://attribution.example.com';
+  var allowed = {{DLV - po_attribution_allowed}} === true;
+  var states = window.__poKitGtm = window.__poKitGtm || {};
+  var state = states[site] = states[site] || { allowed: false, applied: null, loading: false };
+  state.allowed = allowed && navigator.globalPrivacyControl !== true;
+  function tracker() {
+    return window.OpenAttribution && window.OpenAttribution.sites && window.OpenAttribution.sites[site];
+  }
+  function apply() {
+    var current = tracker();
+    if (current && state.applied !== state.allowed) {
+      current.consent(state.allowed);
+      state.applied = state.allowed;
+    }
+  }
+  if (tracker()) { apply(); return; }
+  if (!state.allowed || state.loading) return;
+  state.loading = true;
+  var script = document.createElement('script');
+  script.src = origin + '/pixel.js';
+  script.async = true;
+  script.setAttribute('data-site', site);
+  script.onload = function () { state.loading = false; apply(); };
+  script.onerror = function () { state.loading = false; state.applied = null; };
+  document.head.appendChild(script);
+})();
+</script>

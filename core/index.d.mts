@@ -3,7 +3,7 @@ export type Model = "first_touch" | "last_touch" | "last_non_direct";
 export const MODELS: Model[];
 export interface Touch { url: string; referrer: string | null; occurredAt: string; visitorId: string | null; parameters: Record<string, string>; sourceLabel: string; }
 export interface Touches { firstTouch: Touch | null; lastTouch: Touch | null; lastNonDirectTouch: Touch | null; historyLimited: boolean; }
-export interface Outcome { externalId: string; source: string; eventType: string; occurredAt: string; sourceUpdatedAt: string; outcome: string; qualification: string; visitorSessionId: string | null; amountMinor: number | null; currency: string | null; deleted: boolean; contactIds: string[]; direction: string; label: string; meta?: MetaEnvelope; }
+export interface Outcome { externalId: string; source: string; eventType: string; occurredAt: string; sourceUpdatedAt: string; outcome: string; qualification: string; visitorSessionId: string | null; amountMinor: number | null; currency: string | null; deleted: boolean; contactIds: string[]; direction: string; label: string; meta?: MetaEnvelope; googleAds?: GoogleEnvelope; businessEvent?: BusinessEvent; }
 export interface ReportRow { externalId: string; source: string; eventType: string; occurredAt: string | null; sourceUpdatedAt: string; outcome: string; qualification?: string; amountMinor?: number | null; currency?: string | null; deleted: boolean; attribution?: { status: string; evidence: string | null; touches: Touches | null }; }
 export interface Range { from: string; to: string; model: Model; }
 export interface Coverage { limited: boolean; inspected: number; limit: number; }
@@ -41,3 +41,19 @@ export function validateMetaDestination(raw: unknown): MetaDestination;
 export function metaEventName(outcome: Pick<Outcome, "eventType" | "outcome"> & { qualification?: string }): "Lead" | "Schedule" | "Purchase" | null;
 export function metaEligibility(outcome: Outcome, now: string): string | null;
 export function metaRetry(attempt: number, firstAttemptAt: string, eventTime: number, now: string, retryAfterSeconds: number | null | undefined): string | null;
+export type BusinessEvent = "lead_received" | "lead_qualified" | "appointment_booked" | "estimate_sent" | "job_won" | "payment_received";
+export const BUSINESS_EVENTS: readonly BusinessEvent[];
+export function businessEventName(outcome: { eventType: string; outcome: string; qualification?: string; businessEvent?: BusinessEvent }): BusinessEvent | null;
+export function platformEventName(outcome: Outcome, platform: "meta" | "google_ads"): string | null;
+export function normalizeBusinessEvent(raw: unknown): Outcome;
+export interface GoogleEnvelope { version: 1; deliveryOwner: "self" | "external"; dataProvenance: "customer_provided";
+  consent: { adUserData: "granted" | "denied"; adPersonalization: "granted" | "denied" }; transactionId: string | null;
+  eventSource: "WEB" | "APP" | "IN_STORE" | "PHONE" | "MESSAGE" | "OTHER"; adIdentifiers: { gclid?: string; gbraid?: string; wbraid?: string }; userData: { emailSha256?: string; phoneSha256?: string }; }
+export interface GoogleDestination { accountId: string; loginAccountId: string | null; mode: "disabled" | "validate" | "live"; conversionActions: Partial<Record<BusinessEvent,string>>; }
+export const GOOGLE_MAX_AGE_MS: number;
+export const GOOGLE_MAX_ATTEMPTS: number;
+export const GOOGLE_RETRY_WINDOW_MS: number;
+export function validateGoogle(raw: unknown): GoogleEnvelope;
+export function validateGoogleDestination(raw: unknown): GoogleDestination;
+export function googleEligibility(outcome: Outcome, destination: GoogleDestination, now: string): string | null;
+export function googleRetry(attempt: number, firstAttemptAt: string, eventTime: string, now: string, retryAfterSeconds: number | null | undefined): string | null;

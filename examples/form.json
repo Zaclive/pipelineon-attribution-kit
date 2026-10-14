@@ -1,0 +1,12 @@
+{
+  "externalId": "qa-enquiry-001",
+  "source": "setup-example",
+  "eventType": "form",
+  "occurredAt": "2026-10-14T00:00:00Z",
+  "sourceUpdatedAt": "2026-10-14T00:00:00Z",
+  "outcome": "received",
+  "qualification": "unknown",
+  "visitorSessionId": null,
+  "direction": "inbound",
+  "label": "Synthetic enquiry; use a separate QA database"
+}

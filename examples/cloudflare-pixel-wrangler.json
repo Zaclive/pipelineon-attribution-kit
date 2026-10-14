@@ -1,0 +1,11 @@
+{
+  "name": "attribution-pixel-proxy",
+  "main": "cloudflare-pixel-proxy.mjs",
+  "compatibility_date": "2026-10-14",
+  "vars": {
+    "KIT_ORIGIN": "https://your-kit-origin.example.com"
+  },
+  "observability": {
+    "enabled": false
+  }
+}

@@ -17,9 +17,15 @@ const callrail = process.env.KIT_CALLRAIL_ACCOUNT_ID ? {
 } : null;
 if (!callrail && Object.keys(process.env).some(key => key.startsWith("KIT_CALLRAIL_") && process.env[key]))
   throw new KitError("CONFIG", "Set KIT_CALLRAIL_ACCOUNT_ID before configuring CallRail.", 500);
+if (!process.env.KIT_GOOGLE_ACCOUNT_ID && (process.env.KIT_GOOGLE_MODE && process.env.KIT_GOOGLE_MODE !== "disabled" || process.env.KIT_GOOGLE_CLIENT_ID || process.env.KIT_GOOGLE_REFRESH_TOKEN || process.env.KIT_GOOGLE_CLIENT_SECRET))
+  throw new KitError("CONFIG", "Set KIT_GOOGLE_ACCOUNT_ID before configuring Google delivery.", 500);
 const app = createKitServer({ database, siteId: process.env.KIT_SITE_ID, name: process.env.KIT_SITE_NAME ?? "My website",
   writeToken: process.env.KIT_WRITE_TOKEN, readToken: process.env.KIT_READ_TOKEN,
   publicUrl: process.env.KIT_PUBLIC_URL ?? `http://localhost:${port}`,
-  origins: (process.env.KIT_ALLOWED_ORIGINS ?? "").split(",").filter(Boolean), meta, callrail });
+  origins: (process.env.KIT_ALLOWED_ORIGINS ?? "").split(",").filter(Boolean), meta, callrail,
+  googleAds: process.env.KIT_GOOGLE_ACCOUNT_ID ? { accountId: process.env.KIT_GOOGLE_ACCOUNT_ID,
+    loginAccountId: process.env.KIT_GOOGLE_LOGIN_ACCOUNT_ID || null, mode: process.env.KIT_GOOGLE_MODE ?? "disabled",
+    conversionActions: JSON.parse(process.env.KIT_GOOGLE_CONVERSION_ACTIONS ?? "{}") } : null,
+  googleCredentials: { clientId: process.env.KIT_GOOGLE_CLIENT_ID, clientSecret: process.env.KIT_GOOGLE_CLIENT_SECRET, refreshToken: process.env.KIT_GOOGLE_REFRESH_TOKEN } });
 app.server.listen(port, process.env.HOST ?? "127.0.0.1", () => console.log(`Open attribution kit listening on port ${port}`));
 for (const signal of ["SIGINT", "SIGTERM"]) process.on(signal, () => { app.close().then(() => process.exit(0)); });

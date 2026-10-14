@@ -2,16 +2,18 @@ import { createServer } from "node:http";
 import { createHash, createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import packageInfo from "../package.json" with { type: "json" };
-import { KitError, object, normalizeCall, reportRange, validateMetaDestination } from "../core/index.mjs";
+import { KitError, object, normalizeCall, normalizeBusinessEvent, validateGoogleDestination, reportRange, validateMetaDestination } from "../core/index.mjs";
 import { validateCallrailConfig, verifyCallrailWebhook, processCallrailQueue } from "./callrail.mjs";
 import { openStore } from "./store.mjs";
 import { processMetaQueue, sendMeta } from "./meta-delivery.mjs";
+import { processGoogleQueue, sendGoogle, readGoogleStatus, googleTokenProvider } from "./google-delivery.mjs";
 
 const STATIC = { "/": ["../public/index.html", "text/html"], "/app.js": ["../public/app.js", "text/javascript"], "/style.css": ["../public/style.css", "text/css"], "/pixel.js": ["../public/pixel.js", "text/javascript"] };
 STATIC["/callrail.js"] = ["../public/callrail.js", "text/javascript"];
 STATIC["/callrail-status.js"] = ["../public/callrail-status.js", "text/javascript"];
 STATIC["/meta.js"] = ["../public/meta.js", "text/javascript"];
 STATIC["/meta-status.js"] = ["../core/meta-status.mjs", "text/javascript"];
+STATIC["/google.js"] = ["../public/google.js", "text/javascript"];
 const same = (a, b) => timingSafeEqual(createHash("sha256").update(a).digest(), createHash("sha256").update(b).digest());
 export function createKitServer(config) {
   if (!config.writeToken || config.writeToken.length < 32 || !config.readToken || config.readToken.length < 32 || config.readToken === config.writeToken)
@@ -24,7 +26,18 @@ export function createKitServer(config) {
   if (meta && meta.mode !== "disabled" && (typeof meta.accessToken !== "string" || meta.accessToken.length < 20 || meta.accessToken.length > 4096))
     throw new KitError("CONFIG", "Set the server-side Meta access token before enabling delivery.", 500);
   const callrail = config.callrail ? validateCallrailConfig(config.callrail) : null;
-  const store = openStore(config.database, config.siteId, meta, callrail);
+  const googleAds = config.googleAds ? validateGoogleDestination(config.googleAds) : null;
+  const token = config.googleToken ?? googleTokenProvider(config.googleCredentials, config.googleFetch ?? fetch, () => Date.now());
+  if (googleAds?.mode !== "disabled" && googleAds && !config.googleToken && (!config.googleCredentials?.clientId || !config.googleCredentials?.clientSecret || !config.googleCredentials?.refreshToken))
+    throw new KitError("CONFIG", "Configure server-only Google OAuth credentials before enabling Google delivery.", 500);
+  const store = openStore(config.database, config.siteId, meta, callrail, googleAds);
+  let pendingGoogle = null;
+  function flushGoogle() {
+    if (!pendingGoogle) pendingGoogle = processGoogleQueue(store.googleAds, { limit: 5, now: () => new Date().toISOString(), token,
+      send: (snapshot, accessToken) => sendGoogle(snapshot, accessToken, config.googleFetch ?? fetch),
+      poll: (snapshot, requestId, accessToken) => readGoogleStatus(snapshot, requestId, accessToken, config.googleFetch ?? fetch) }).finally(() => { pendingGoogle = null; });
+    return pendingGoogle;
+  }
   let pendingCallrail = null;
   function flushCallrail() {
     if (!pendingCallrail) pendingCallrail = processCallrailQueue(store.callrail, { limit: 5, now: () => new Date().toISOString(),
@@ -120,7 +133,7 @@ export function createKitServer(config) {
         if (origin !== publicOrigin) throw new KitError("FORBIDDEN", "Same-origin sign-out required.", 403);
         response.setHeader("Set-Cookie", "kit_session=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0"); send({ signedIn: false }, 200); return;
       }
-      const access = auth(request, ["/v1/outcomes", "/v1/calls", "/v1/meta/flush", "/v1/meta/retry", "/v1/callrail/flush", "/v1/callrail/retry"].includes(url.pathname) && request.method === "POST");
+      const access = auth(request, ["/v1/events", "/v1/outcomes", "/v1/calls", "/v1/meta/flush", "/v1/meta/retry", "/v1/google/flush", "/v1/google/retry", "/v1/callrail/flush", "/v1/callrail/retry"].includes(url.pathname) && request.method === "POST");
       rate(`private:${access}`, 120);
       if (url.pathname === "/mcp" && ["GET", "DELETE"].includes(request.method)) {
         response.setHeader("Allow", "POST"); throw new KitError("METHOD_NOT_ALLOWED", "This MCP server uses stateless JSON responses and has no SSE stream.", 405);
@@ -137,6 +150,9 @@ export function createKitServer(config) {
         send(store.callrail.retry(input.id, now), 200); return;
       }
       if (url.pathname === "/v1/meta" && request.method === "GET") { send(store.meta.list(), 200); return; }
+      if (url.pathname === "/v1/google" && request.method === "GET") { send(store.googleAds.list(), 200); return; }
+      if (url.pathname === "/v1/google/flush" && request.method === "POST") { send(await flushGoogle(), 200); return; }
+      if (url.pathname === "/v1/google/retry" && request.method === "POST") { send(store.googleAds.retry((await body(request)).id, now), 200); return; }
       if (url.pathname === "/v1/meta/flush" && request.method === "POST") { send(await flushMeta(), 200); return; }
       if (url.pathname === "/v1/meta/retry" && request.method === "POST") {
         const input = await body(request);
@@ -149,9 +165,9 @@ export function createKitServer(config) {
         else { const result = store.report(range, now); send(url.pathname === "/v1/doctor" ? result.doctor : result, 200); }
         return;
       }
-      if (["/v1/outcomes", "/v1/calls"].includes(url.pathname) && request.method === "POST") {
+      if (["/v1/events", "/v1/outcomes", "/v1/calls"].includes(url.pathname) && request.method === "POST") {
         const input = await body(request);
-        send(store.importOutcome(url.pathname === "/v1/calls" ? normalizeCall(input) : input, now), 200); return;
+        send(store.importOutcome(url.pathname === "/v1/calls" ? normalizeCall(input) : url.pathname === "/v1/events" ? normalizeBusinessEvent(input) : input, now), 200); return;
       }
       if (url.pathname === "/v1/export" && request.method === "GET") { send(store.exportOutcomes(url.searchParams.get("cursor")), 200); return; }
       if (url.pathname === "/mcp" && request.method === "POST") {
@@ -204,10 +220,15 @@ export function createKitServer(config) {
     flushCallrail().catch(() => console.warn("[WARN] CallRail worker failed; inspect durable call receipts."));
   }, 5000) : null;
   callrailTimer?.unref();
-  return { server, store, flushMeta, flushCallrail, close: async () => {
+  const googleTimer = googleAds && googleAds.mode !== "disabled" && config.googleAutoStart !== false ? setInterval(() => {
+    flushGoogle().catch(() => console.warn("[WARN] Google worker failed; durable leases will be recovered. Inspect delivery status."));
+  }, 5000) : null;
+  googleTimer?.unref();
+  return { server, store, flushMeta, flushGoogle, flushCallrail, close: async () => {
     if (timer) clearInterval(timer);
     if (callrailTimer) clearInterval(callrailTimer);
+    if (googleTimer) clearInterval(googleTimer);
     await new Promise((resolve, reject) => { server.close(error => { if (error) reject(error); else resolve(); }); server.closeIdleConnections(); });
-    try { await Promise.all([pendingFlush, pendingCallrail]); } finally { store.close(); }
+    try { await Promise.all([pendingFlush, pendingGoogle, pendingCallrail]); } finally { store.close(); }
   } };
 }

@@ -3,8 +3,9 @@ import { createHash, randomUUID } from "node:crypto";
 import { KitError, safePage, sessionReference, timestamp, validateOutcome, buildTouches, buildReport, trackingDoctor } from "../core/index.mjs";
 import { openCallrailStore } from "./callrail-store.mjs";
 import { openMetaStore } from "./meta-store.mjs";
+import { openGoogleStore } from "./google-store.mjs";
 
-export function openStore(filename, siteId, metaDestination, callrailConfig) {
+export function openStore(filename, siteId, metaDestination, callrailConfig, googleDestination) {
   const db = new DatabaseSync(filename);
   db.exec(`PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000;
     CREATE TABLE IF NOT EXISTS config (id INTEGER PRIMARY KEY CHECK(id=1), site_id TEXT NOT NULL);
@@ -32,6 +33,7 @@ export function openStore(filename, siteId, metaDestination, callrailConfig) {
     finally { inTransaction = false; }
   }
   const meta = openMetaStore(db, siteId, metaDestination, transaction, audit);
+  const googleAds = openGoogleStore(db, siteId, googleDestination, transaction, audit);
   function collect(input, origin, now) {
     if (input.siteId !== siteId) throw new KitError("NOT_FOUND", "Website not available.", 404);
     const visitor = sessionReference(input.visitorId);
@@ -77,6 +79,7 @@ export function openStore(filename, siteId, metaDestination, callrailConfig) {
         .run(event.source, event.externalId, event.occurredAt, event.sourceUpdatedAt, event.visitorSessionId, payload);
       audit("outcome_imported", `${event.source}:${event.externalId}`, now);
       meta.capture(event, now);
+      googleAds.capture(event, now);
       return { status: previous ? "updated" : "created", externalId: event.externalId };
     });
   }
@@ -125,5 +128,5 @@ export function openStore(filename, siteId, metaDestination, callrailConfig) {
       consistency: "Pause imports during a full export to keep pagination consistent." };
   }
   const callrail = openCallrailStore(db, callrailConfig, transaction, audit, importOutcome);
-  return { collect, importOutcome, report, recovery, exportOutcomes, meta, callrail, close: () => db.close() };
+  return { collect, importOutcome, report, recovery, exportOutcomes, meta, callrail, googleAds, close: () => db.close() };
 }

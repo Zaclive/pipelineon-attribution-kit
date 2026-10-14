@@ -38,8 +38,6 @@ CallRail's [API](https://apidocs.callrail.com/) uses customer API keys. The acco
 
 One connection belongs to one website and company. Account/company IDs are locked after creation to avoid reassigning queued calls to another business. Pause stops provider refreshes; it does not retract imported facts or already-requested Meta events. Manage the Meta destination separately to pause advertising delivery.
 
-
-
 ### Self-hosted kit
 
 Set these on the server, never on the website:

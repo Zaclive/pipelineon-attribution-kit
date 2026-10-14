@@ -1,6 +1,8 @@
 # Connect a CRM, your backend or an automation tool
 
-The connection is: **website visit → enquiry → business outcome → attribution → Meta receipt**. Your connector supplies the enquiry and outcome records. This kit supplies collection, attribution, an outcome API and optional Meta delivery. You can use the same design with PipelineOn hosting.
+New installation? Follow [START-HERE.md](START-HERE.md), use [PIXEL-EVENTS.md](PIXEL-EVENTS.md) for the website and complete [FIELD-MAPPING.md](FIELD-MAPPING.md) before building the adapter. [AI-SETUP.md](AI-SETUP.md) contains the task to give a coding assistant.
+
+The connection is: **website visit → enquiry → business outcome → attribution → Meta receipt**. Your connector supplies the enquiry and outcome records. This kit supplies collection, attribution, an outcome API and optional Meta and Google Ads delivery. Use [canonical business events](EVENTS.md) and the [Google Ads setup guide](GOOGLE-ADS.md) for the shared event contract and independent Google destination. You can use the same design with PipelineOn hosting.
 
 Start with the [README](README.md) to install the kit. Use [CRM access options](CRM-ACCESS.md) to choose a provider and the [CallRail guide](CALLRAIL.md) for calls. The CallRail guide covers the bundled connector; other provider mappings remain adapter work. An API key authorizes a connection; it does not perform synchronization by itself.
 

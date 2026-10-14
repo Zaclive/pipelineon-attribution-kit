@@ -1,8 +1,29 @@
 # PipelineOn Open Attribution
 
-Self-hosted website attribution, call/CRM outcome ingestion, a tracking doctor, Meta conversion delivery and read-only assistant tools. MIT licensed. Runs independently with no PipelineOn account, cloud database, paid identity provider or JavaScript package dependencies.
+Self-hosted website attribution, call/CRM outcome ingestion, a tracking doctor, Meta and Google Ads conversion delivery and read-only assistant tools. MIT licensed. Runs independently with no PipelineOn account, cloud database, paid identity provider or JavaScript package dependencies.
 
-This is an attribution foundation, not full HYROS or AIR parity. It does not identify anonymous people, rent phone numbers, send outreach, train predictive models or dispatch Google conversions. PipelineOn's paid identification, enrichment and follow-up services are separate.
+This is an attribution foundation, not full HYROS or AIR parity. It does not identify anonymous people, rent phone numbers, send outreach, train predictive models or dispatch GA4 events. PipelineOn's paid identification, enrichment and follow-up services are separate.
+
+## Canonical events and advertising destinations
+
+Use the [business-event contract](EVENTS.md) to normalize leads, qualified calls/forms, appointments, estimates, won jobs and payments. The same facts feed attribution and independent advertising destinations. Follow [Google Ads setup](GOOGLE-ADS.md) for the Data Manager API adapter. Google validation, submission and completed processing have separate receipts. GA4 is not included.
+
+## Set up your website and CRM
+
+Start with [START-HERE.md](START-HERE.md). It covers both PipelineOn and the self-hosted kit, in the order you need to connect them.
+
+| Guide | Use it for |
+| --- | --- |
+| [Practical setup recipes](SETUP-RECIPES.md) | Server/free options, Railway, optional Worker proxy, CSV and CRM middleware. |
+| [GTM walkthrough](GTM.md) | Consent-aware Custom HTML tag and form handoff checks. |
+| [Facebook setup](META-SETUP.md) | Dataset access, private token, sender ownership and Test Events verification. |
+| [AI setup instructions](AI-SETUP.md) | A task to give Claude, Codex or another coding assistant, with a private setup brief. |
+| [Pixel and event setup](PIXEL-EVENTS.md) | Consent, UTM capture, form/session handoff and real business events. |
+| [CRM field mapping and renaming](FIELD-MAPPING.md) | Translate source objects, relationships, statuses, IDs and money into consistent outcomes. |
+| [Hosting and optional Cloudflare relay](DEPLOYMENT.md) | Deploy the kit or use PipelineOn; implement middleware only when needed. |
+| [End-to-end acceptance checks](ACCEPTANCE.md) | Prove source attribution, revenue, deduplication, recovery and Meta delivery separately. |
+
+Fill the [setup brief](examples/setup-brief.template.json) and [mapping worksheet](examples/crm-mapping.template.json) in your private deployment repository. These are planning worksheets, not executable configuration. The [AI-readable index](llms.txt) links the documentation. Always use docs from the same version as your installed code.
 
 ## Connect your data, using the route you choose
 
@@ -26,7 +47,7 @@ Website pixel -> accepted visitorSessionId -> form/call -> CRM or backend
                                              durable queue -> Meta -> receipt
 ```
 
-**Included:** tracking, outcome ingestion, attribution, read-only reports/tools and optional Meta delivery with durable retries and receipts. An accepted import is not a Meta delivery. The outbound leg runs on your server without requiring a PipelineOn account. Verify your own destination in Test Events before enabling live conversions.
+**Included:** tracking, outcome ingestion, attribution, read-only reports/tools, a CallRail connector, and optional Meta and Google Ads delivery with durable retries and receipts. An accepted import is not a Meta delivery. The outbound leg runs on your server without requiring a PipelineOn account. Verify your own destination in Test Events before enabling live conversions.
 
 Choose the route that fits your setup:
 
@@ -37,7 +58,7 @@ Choose the route that fits your setup:
 | Zapier, Make, n8n or another automation tool | Use a trusted trigger, map the fields and send an authenticated HTTP request. This is a generic HTTP integration, not a bundled native app. |
 | Provider webhook | Verify the provider request in your relay, normalize it, then POST to the outcome API. Normalized calls can use `/v1/calls`. |
 
-You supply the connection from your source system to this front door. The kit supplies validation, persistent facts, attribution and explicitly requested Meta delivery. Raw CRM/provider payloads are not accepted without mapping. No CRM login or native connector is included in this bundle.
+You supply the connection from your source system to this front door. The kit supplies validation, persistent facts, attribution and explicitly requested Meta delivery. Raw CRM/provider payloads are not accepted without mapping. No generic CRM login or arbitrary-CRM connector is included; the optional CallRail connector is documented separately.
 
 ### What your connector must carry
 
@@ -225,7 +246,7 @@ Connect an MCP client supporting authenticated Streamable HTTP to `https://your-
 
 PipelineOn keeps its existing account, visibility, billing, enrichment and authorization controls. The equivalent read route is `GET /api/v1/attribution` with siteId and `traffic:read`, `customers:read`, `journeys:read`. Call imports use `POST /api/v1/calls` with `{siteId,call}`, `data:write`, and an `Idempotency-Key`; normal import rate limits and reconciliation apply. Stable call data lives in source `calls-callrail`, `calls-ringba` or `calls-other`. Contact references must belong to that same source.
 
-Meta setup and receipt history are available on `/attribution`. A signed-in operator configures the website destination. `GET /api/v1/attribution/meta?siteId=...` and MCP `get_meta_delivery_receipts` require `customers:read`. Imported event records accept the optional `meta` envelope through `data:write` authorization. Use JSON imports for the nested envelope. Read-only MCP connections cannot enqueue conversions; an authorized write integration is required.
+Meta setup and receipt history are available on `/attribution`. A signed-in operator configures the website destination. `GET /api/v1/attribution/meta?siteId=...` and MCP `get_meta_delivery_receipts` require `customers:read`. Imported event records accept the same optional `meta` envelope through `data:write` authorization. Use JSON imports for the nested envelope. Read-only MCP connections cannot enqueue conversions; an authorized write integration is required.
 
 Its report bounds are 100 outcomes, up to 1,000 candidate records in the date superset, and bounded existing journey lookups; every truncation is disclosed.
 

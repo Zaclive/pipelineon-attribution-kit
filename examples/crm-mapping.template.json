@@ -1,0 +1,86 @@
+{
+  "documentType": "crm_adapter_design_worksheet_not_api_payload",
+  "worksheetVersion": 1,
+  "instructions": "Fill from the actual provider API/schema and customer definitions. Null means unresolved, not an optional runtime default. Do not POST this worksheet to the importer.",
+  "contract": "kit_v0.2_outcome_fields_or_hosted_wrapper_in_INTEGRATIONS.md",
+  "source": {
+    "provider": null,
+    "accountId": null,
+    "sourceNamespace": null,
+    "apiVersion": null,
+    "schemaEvidenceLocation": null
+  },
+  "destination": {
+    "mode": null,
+    "origin": null,
+    "siteId": null,
+    "writeSecretLocation": null
+  },
+  "delivery": {
+    "authenticatedTriggerOrPolling": null,
+    "verificationMethod": null,
+    "durableInbox": null,
+    "currentStateLookup": null,
+    "revisionLedger": null,
+    "paginationAndReconciliation": null,
+    "permanentFailureAndRetryPolicy": null
+  },
+  "mappings": [
+    {
+      "name": "saved_enquiry",
+      "sourceObjectApiName": null,
+      "stableActivityIdPath": null,
+      "actualSuccessStateAndEvidence": null,
+      "occurredAtPathAndTimezone": null,
+      "sourceUpdatedAtPathOrLedger": null,
+      "sessionFieldApiPath": null,
+      "parentRelationshipPaths": [],
+      "normalized": {
+        "eventType": "form",
+        "outcome": "received",
+        "qualification": "unknown",
+        "amountMinor": null,
+        "currency": null
+      },
+      "contactReferencePaths": [],
+      "metaDeliveryOwner": null
+    },
+    {
+      "name": "collected_payment",
+      "sourceObjectApiName": null,
+      "stableTransactionIdPath": null,
+      "actualCollectedStateAndEvidence": null,
+      "occurredAtPathAndTimezone": null,
+      "sourceUpdatedAtPathOrLedger": null,
+      "enquiryOrJobForeignKeyPath": null,
+      "lookupToOriginalSession": null,
+      "amountPath": null,
+      "sourceAmountUnits": null,
+      "currencyPath": null,
+      "exactMinorUnitConversion": null,
+      "normalized": {
+        "eventType": "payment",
+        "outcome": "completed",
+        "qualification": "unknown"
+      },
+      "revenueAuthorityAndDuplicateExclusions": null,
+      "refundOrCancellationHandling": null,
+      "metaDeliveryOwner": null
+    }
+  ],
+  "additionalActivityMappings": [],
+  "rules": {
+    "missingOrAmbiguousSession": "Keep the successful business record and import it unlinked; never guess.",
+    "replay": "Keep source, externalId, original occurrence time, revision and payload stable.",
+    "changedSameRevision": "Resolve the source conflict; do not replace the timestamp on retry.",
+    "businessMeaning": "Map notes, stages, bookings and payments separately; won does not imply collected.",
+    "advertising": "One server owner per conversion; advertising envelope and consent are separate from attribution."
+  },
+  "verification": {
+    "redactedSourceSampleLocation": null,
+    "expectedNormalizedSampleLocation": null,
+    "importReceiptLocation": null,
+    "sourceAndRevenueReportLocation": null,
+    "unresolvedFields": []
+  }
+}

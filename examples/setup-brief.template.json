@@ -1,0 +1,83 @@
+{
+  "documentType": "private_installation_worksheet_not_runtime_config",
+  "worksheetVersion": 1,
+  "instructions": "Replace nulls with verified decisions. Keep secret locations only, never secret values. Missing information stays unresolved.",
+  "installedVersionAndCommit": null,
+  "installation": {
+    "mode": null,
+    "modeChoices": [
+      "pipelineon",
+      "self_hosted_kit"
+    ],
+    "environment": "qa",
+    "siteIdOrHostedWebsiteId": null,
+    "websiteOrigins": [],
+    "trackingOrigin": null,
+    "existingBackendOrWorkflow": null,
+    "adapterHost": null,
+    "persistentStorageAndBackupOwner": null
+  },
+  "website": {
+    "frameworkOrCms": null,
+    "formProvider": null,
+    "actualSaveCallbackOrBackend": null,
+    "embeddedOrMultiStepForms": [],
+    "consentManagerAndApprovedPolicy": null,
+    "sessionFieldOnEnquiry": null
+  },
+  "source": {
+    "crm": null,
+    "accountOrCompanyId": null,
+    "apiAccessVerified": false,
+    "nativeConnectorAlreadyActive": null,
+    "existingImportedActivities": [],
+    "enquiryObject": null,
+    "jobOrOpportunityObject": null,
+    "bookingObject": null,
+    "paymentObject": null,
+    "noteParentRelationships": []
+  },
+  "businessDefinitions": {
+    "qualifiedLead": null,
+    "confirmedBooking": null,
+    "collectedPaymentState": null,
+    "revenueAuthority": null,
+    "currencyAndMinorUnits": null,
+    "sourceTimezone": null,
+    "revisionAuthority": null
+  },
+  "callTracking": {
+    "enabled": false,
+    "provider": null,
+    "accountApproved": false,
+    "companyId": null,
+    "websitePoolId": null,
+    "capturedSessionCookiesVerified": false
+  },
+  "advertising": {
+    "enabled": false,
+    "existingPixelAndServerSenders": [],
+    "conversionOwnershipByEvent": {},
+    "testDatasetId": null,
+    "testEventCodeLocation": null,
+    "browserServerSharedEventIdPlan": null,
+    "consentAndMatchingDataSource": null
+  },
+  "secretLocationsOnly": {
+    "sourceApiCredential": null,
+    "webhookVerificationSecret": null,
+    "destinationWriteCredential": null,
+    "reportReadCredential": null,
+    "advertisingCredential": null
+  },
+  "acceptance": {
+    "qaWebsiteOrDatabase": null,
+    "testForm": null,
+    "testBooking": null,
+    "testPayment": null,
+    "desktopAndMobileChecks": null,
+    "receiptDirectory": null,
+    "rollbackAndAlertOwner": null
+  },
+  "unresolvedDecisions": []
+}

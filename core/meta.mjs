@@ -1,5 +1,6 @@
 import { KitError, object, textValue, timestamp } from "./primitives.mjs";
 import { safePage } from "./tracking.mjs";
+import { platformEventName } from "./events.mjs";
 
 export const META_GRAPH_VERSION = "v25.0";
 export const META_MAX_AGE_MS = 7 * 86400000;
@@ -56,11 +57,7 @@ export function validateMetaDestination(raw) {
   return { datasetId: value.datasetId, mode: value.mode, testEventCode: code };
 }
 export function metaEventName(outcome) {
-  if (outcome.eventType === "payment" && outcome.outcome === "completed") return "Purchase";
-  if (outcome.eventType === "booking" && outcome.outcome === "completed") return "Schedule";
-  if (outcome.eventType === "form" && ["received", "completed"].includes(outcome.outcome)) return "Lead";
-  if (outcome.eventType === "call" && outcome.outcome === "completed" && outcome.qualification === "qualified") return "Lead";
-  return null;
+  return platformEventName(outcome, "meta");
 }
 export function metaEligibility(outcome, now) {
   if (outcome.deleted) return "outcome_deleted";
