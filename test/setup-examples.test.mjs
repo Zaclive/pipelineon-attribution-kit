@@ -80,3 +80,34 @@ test('Worker recipe forwards CORS preflight and tagged visits to the real local 
     assert.equal((await collect('https://evil.example')).status,403);
   } finally { globalThis.fetch=originalFetch; await app.close(); }
 });
+
+
+test('pixel and GTM accept site IDs matching object prototype names without duplicate initialization', () => {
+  const pixel = readFileSync(new URL('../public/pixel.js', import.meta.url), 'utf8');
+  for (const site of ['__proto__', 'constructor', 'toString']) {
+    const scripts = [], events = [];
+    const context = { URL, navigator: { globalPrivacyControl: false }, window: {
+      OpenAttribution: { sites: {} }, __poKitGtm: {},
+      addEventListener(name) { events.push(name); },
+    }, document: {
+      currentScript: { src: 'https://kit.example.com/pixel.js', dataset: { site } },
+      addEventListener(name) { events.push(name); },
+      createElement() { return { setAttribute(key, value) { this[key] = value; } }; },
+      head: { appendChild(script) { scripts.push(script); } },
+    }};
+    const source = tag.replace("'your-website'", JSON.stringify(site)).replace('{{DLV - po_attribution_allowed}}', 'true');
+    // No tracker yet: an inherited name must not count as a loaded tracker.
+    runInNewContext(source, context);
+    assert.equal(scripts.length, 1, site);
+    context.window.OpenAttribution = { sites: {} };
+    runInNewContext(pixel, context);
+    const tracker = context.window.OpenAttribution.sites[site];
+    assert.equal(typeof tracker.consent, 'function', site);
+    assert.equal(tracker.getTrackingContext(), null);
+    runInNewContext(pixel, context);
+    assert.equal(context.window.OpenAttribution.sites[site], tracker);
+    assert.deepEqual(events, ['popstate', 'submit']);
+    assert.equal(Object.getPrototypeOf(context.window.OpenAttribution.sites), null);
+    assert.equal(Object.getPrototypeOf(context.window.__poKitGtm), null);
+  }
+});

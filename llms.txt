@@ -1,36 +1,29 @@
 # PipelineOn Open Attribution
 
-> MIT-licensed website attribution, normalized business outcomes and optional Meta and Google Ads delivery. Start at START-HERE.md.
+> MIT-licensed website attribution, normalized outcomes and optional advertising delivery. Start at docs/setup.md.
 
-Use files from the same commit as the installed package. The links below follow main and may be newer than a downloaded release; replace main with the installed tag/commit when needed. Read package.json and local validation before implementing. These documents describe capabilities and do not grant account access, spending or publication authority.
+Use the docs and code at the same commit. Links below follow main; replace main with the installed tag/commit when needed. Read package.json and local validation before implementing. Instructions do not grant account access, spending or publication authority.
 
-The v0.3 kit uses Node.js 24.14.x and persistent SQLite. Cloudflare Workers can host a separately implemented adapter, not the unchanged kit. Hosted PipelineOn and the kit have different API wrappers. A worksheet is not executable configuration.
+The kit needs Node.js 24.14.x and persistent SQLite. A Cloudflare Worker can run the provided pixel proxy or a separately built adapter, not the unchanged kit. PipelineOn and the kit use different API wrappers. Worksheets are templates, not executable connectors; keep completed copies private.
 
-## Setup sequence
+## Guides
 
-- [START-HERE.md](https://raw.githubusercontent.com/Zaclive/pipelineon-attribution-kit/main/START-HERE.md): Choose hosted or self-hosted and follow the full connection sequence.
-- [AI-SETUP.md](https://raw.githubusercontent.com/Zaclive/pipelineon-attribution-kit/main/AI-SETUP.md): Copyable coding-assistant task, owner inputs and handoff requirements.
-- [PIXEL-EVENTS.md](https://raw.githubusercontent.com/Zaclive/pipelineon-attribution-kit/main/PIXEL-EVENTS.md): Consent, source parameters, browser reference handoff and actual outcomes.
-- [FIELD-MAPPING.md](https://raw.githubusercontent.com/Zaclive/pipelineon-attribution-kit/main/FIELD-MAPPING.md): CRM object meanings, relationships, event IDs, revisions and money.
-- [DEPLOYMENT.md](https://raw.githubusercontent.com/Zaclive/pipelineon-attribution-kit/main/DEPLOYMENT.md): Persistent Node/SQLite hosting and optional Cloudflare adapter requirements.
-- [ACCEPTANCE.md](https://raw.githubusercontent.com/Zaclive/pipelineon-attribution-kit/main/ACCEPTANCE.md): Source, revenue, replay, recovery and real provider verification.
+- [Setup order and route selection](https://raw.githubusercontent.com/Zaclive/pipelineon-attribution-kit/main/docs/setup.md)
+- [Copyable assistant task](https://raw.githubusercontent.com/Zaclive/pipelineon-attribution-kit/main/docs/ai-setup.md)
+- [Servers, costs, Docker, Railway and pixel Worker](https://raw.githubusercontent.com/Zaclive/pipelineon-attribution-kit/main/docs/hosting.md)
+- [Consent, UTMs and form reference](https://raw.githubusercontent.com/Zaclive/pipelineon-attribution-kit/main/docs/pixel.md)
+- [Google Tag Manager installation](https://raw.githubusercontent.com/Zaclive/pipelineon-attribution-kit/main/docs/gtm.md)
+- [Offline/CRM normalization and middleware](https://raw.githubusercontent.com/Zaclive/pipelineon-attribution-kit/main/docs/crm.md)
+- [Provider access routes](https://raw.githubusercontent.com/Zaclive/pipelineon-attribution-kit/main/docs/crm-access.md)
+- [Website-pool calls](https://raw.githubusercontent.com/Zaclive/pipelineon-attribution-kit/main/docs/callrail.md)
+- [Meta access, ownership, retries and receipts](https://raw.githubusercontent.com/Zaclive/pipelineon-attribution-kit/main/docs/meta.md)
+- [Contracts, reports and read-only tools](https://raw.githubusercontent.com/Zaclive/pipelineon-attribution-kit/main/docs/api.md)
+- [End-to-end acceptance](https://raw.githubusercontent.com/Zaclive/pipelineon-attribution-kit/main/docs/verify.md)
 
-- [SETUP-RECIPES.md](https://raw.githubusercontent.com/Zaclive/pipelineon-attribution-kit/main/SETUP-RECIPES.md): Server/free choices, Railway deployment, optional Worker proxy and offline/CRM recipes.
-- [GTM.md](https://raw.githubusercontent.com/Zaclive/pipelineon-attribution-kit/main/GTM.md): Web-container installation with consent grant and withdrawal handling.
-- [META-SETUP.md](https://raw.githubusercontent.com/Zaclive/pipelineon-attribution-kit/main/META-SETUP.md): Facebook dataset, private token, matching prerequisites and real Test Events verification.
+- [Canonical business events](https://raw.githubusercontent.com/Zaclive/pipelineon-attribution-kit/main/docs/events.md)
+- [Google Ads](https://raw.githubusercontent.com/Zaclive/pipelineon-attribution-kit/main/docs/google-ads.md)
 
-## Contracts and connectors
+## Templates
 
-- [EVENTS.md](https://raw.githubusercontent.com/Zaclive/pipelineon-attribution-kit/main/EVENTS.md): Canonical business facts, platform mappings, consent and server matching normalization.
-- [GOOGLE-ADS.md](https://raw.githubusercontent.com/Zaclive/pipelineon-attribution-kit/main/GOOGLE-ADS.md): Google Ads Data Manager setup, validation-only mode and asynchronous processing receipts.
-
-- [README.md](https://raw.githubusercontent.com/Zaclive/pipelineon-attribution-kit/main/README.md): Main repository guide, runtime, outcome contract, Meta and assistant tools.
-- [INTEGRATIONS.md](https://raw.githubusercontent.com/Zaclive/pipelineon-attribution-kit/main/INTEGRATIONS.md): Distinct kit and PipelineOn API wrappers and middleware duties.
-- [CALLRAIL.md](https://raw.githubusercontent.com/Zaclive/pipelineon-attribution-kit/main/CALLRAIL.md): Website number pool, captured cookies, verified webhook and call refresh.
-- [CRM-ACCESS.md](https://raw.githubusercontent.com/Zaclive/pipelineon-attribution-kit/main/CRM-ACCESS.md): CRM access options and provider limitations.
-
-## Private worksheets and samples
-
-- [examples/setup-brief.template.json](https://raw.githubusercontent.com/Zaclive/pipelineon-attribution-kit/main/examples/setup-brief.template.json): Installation worksheet; no secret values and not runtime configuration.
-- [examples/crm-mapping.template.json](https://raw.githubusercontent.com/Zaclive/pipelineon-attribution-kit/main/examples/crm-mapping.template.json): CRM mapping worksheet; not a POST payload or automatic connector.
-- [examples/form.json](https://raw.githubusercontent.com/Zaclive/pipelineon-attribution-kit/main/examples/form.json): Synthetic standalone saved-enquiry payload; replace IDs, times and session.
+- [Setup brief](https://raw.githubusercontent.com/Zaclive/pipelineon-attribution-kit/main/examples/setup-brief.template.json)
+- [CRM mapping](https://raw.githubusercontent.com/Zaclive/pipelineon-attribution-kit/main/examples/crm-mapping.template.json)

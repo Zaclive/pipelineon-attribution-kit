@@ -3,11 +3,12 @@
   var site = 'your-website';
   var origin = 'https://attribution.example.com';
   var allowed = {{DLV - po_attribution_allowed}} === true;
-  var states = window.__poKitGtm = window.__poKitGtm || {};
+  var states = window.__poKitGtm = Object.assign(Object.create(null), window.__poKitGtm || {});
   var state = states[site] = states[site] || { allowed: false, applied: null, loading: false };
   state.allowed = allowed && navigator.globalPrivacyControl !== true;
   function tracker() {
-    return window.OpenAttribution && window.OpenAttribution.sites && window.OpenAttribution.sites[site];
+    var sites = window.OpenAttribution && window.OpenAttribution.sites;
+    return sites && Object.prototype.hasOwnProperty.call(sites, site) ? sites[site] : null;
   }
   function apply() {
     var current = tracker();

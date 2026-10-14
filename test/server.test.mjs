@@ -26,7 +26,7 @@ test("HTTP tagged visit → call/form/payment → durable attribution, with auth
     assert.equal((await collect(visit)).body.duplicate, true);
     assert.equal((await collect({ ...visit, url: "https://example.com/different" })).status, 409);
     assert.equal((await collect({ ...visit, siteId: "another" })).status, 404);
-    assert.equal((await collect({ ...visit, eventId: randomUUID(), url: "https://other.com/" })).status, 400);
+    assert.equal((await collect({ ...visit, eventId: randomUUID(), url: "https://other.example/" })).status, 400);
     const second = await collect({ ...visit, eventId: randomUUID(), occurredAt: time(-2), url: "https://example.com/?utm_source=facebook" });
     assert.equal(second.body.visitorSessionId, first.body.visitorSessionId);
     const event = { externalId: "invoice1", source: "crm", eventType: "payment", occurredAt: time(-1), sourceUpdatedAt: time(-1), outcome: "completed", qualification: "qualified", visitorSessionId: first.body.visitorSessionId, amountMinor: 125050, currency: "USD" };
@@ -62,7 +62,7 @@ test("HTTP tagged visit → call/form/payment → durable attribution, with auth
     assert.equal((await post("/v1/outcomes", { ...event, sourceUpdatedAt: time(0) }, config.writeToken)).body.status, "updated");
     const rpc = await post("/mcp", { jsonrpc: "2.0", id: 1, method: "tools/call", params: { name: "get_attribution_report", arguments: Object.fromEntries(params) } }, config.readToken);
     assert.equal(rpc.body.result.structuredContent.report.totals.payments, 1);
-    assert.equal((await json("/v1/config", { headers: { authorization: `Bearer ${config.readToken}`, Origin: "https://evil.com" } })).status, 403);
+    assert.equal((await json("/v1/config", { headers: { authorization: `Bearer ${config.readToken}`, Origin: "https://evil.example" } })).status, 403);
     const login = await json("/session", { method: "POST", headers: { "Content-Type": "application/json", Origin: config.publicUrl }, body: JSON.stringify({ token: config.readToken }) });
     assert.equal(login.status, 200);
     assert.match(login.headers.get("set-cookie"), /HttpOnly; SameSite=Strict/);

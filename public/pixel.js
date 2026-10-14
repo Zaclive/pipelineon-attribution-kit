@@ -5,6 +5,7 @@
   var endpoint = new URL(script.src).origin;
   var site = script.dataset.site;
   var registry = window.OpenAttribution = window.OpenAttribution || { sites: {} };
+  registry.sites = Object.assign(Object.create(null), registry.sites);
   if (registry.sites[site]) return;
   var storageKey = "oa:" + endpoint + ":" + site;
   var enabled = false;
