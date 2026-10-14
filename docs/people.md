@@ -2,7 +2,9 @@
 
 PipelineOn keeps a site-owned person UUID independently of CRM traffic-source fields. A person can have several verified browser histories and a HubSpot portal/contact reference. Browser IDs, campaign IDs, IP addresses and provider guesses are not interchangeable person IDs. Anonymous visits stay browser-level until an accepted enquiry provides a link.
 
-The kit persists people, CRM references and timestamped enquiry claims in SQLite. Restarting the server or refreshing CRM data preserves person IDs. One database belongs to one site. Use a separate outcome `source` for each HubSpot portal; the same numeric contact ID in another portal is a different external identity.
+The kit stores the HubSpot portal and contact IDs directly on each person row. A separate table stores timestamped, verified browser links supported by accepted enquiries. It reuses the existing visits and outcomes tables for page views, campaigns, CRM stage changes and other events; it does not duplicate that history. Restarting the server or refreshing CRM data preserves person IDs. One database belongs to one site. Use a separate outcome `source` for each HubSpot portal; the same numeric contact ID in another portal is a different external identity.
+
+Upgrading from v0.3.7 automatically moves the former CRM-reference rows onto people without changing person IDs or browser links. Back up the SQLite database first. An old person with several CRM references requires review rather than choosing one silently.
 
 ## Connect an accepted enquiry
 

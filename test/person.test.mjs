@@ -4,8 +4,46 @@ import { randomUUID } from "node:crypto";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { DatabaseSync } from "node:sqlite";
 import { createKitServer } from "../server/app.mjs";
 import { resolvePersonSessions } from "../core/index.mjs";
+
+test("v0.3.7 upgrade moves the HubSpot reference onto people and preserves UUIDs", async () => {
+  const dir=mkdtempSync(join(tmpdir(),"person-upgrade-")), filename=join(dir,"db.sqlite"), person=randomUUID();
+  const legacy=new DatabaseSync(filename);
+  legacy.exec(`CREATE TABLE people(id TEXT PRIMARY KEY,created_at TEXT NOT NULL);
+    CREATE TABLE person_contacts(provider TEXT NOT NULL,account_id TEXT NOT NULL,contact_id TEXT NOT NULL,person_id TEXT NOT NULL REFERENCES people(id),PRIMARY KEY(provider,account_id,contact_id));`);
+  legacy.prepare("INSERT INTO people VALUES(?,?)").run(person,"2026-10-01T00:00:00Z");
+  legacy.prepare("INSERT INTO person_contacts VALUES('hubspot','123','101',?)").run(person);legacy.close();
+  const config={database:filename,siteId:"example",writeToken:"w".repeat(40),readToken:"r".repeat(40),publicUrl:"http://localhost:4310",origins:["https://example.com"]};
+  try {
+    const app=createKitServer(config);app.store.close();
+    const upgraded=new DatabaseSync(filename);
+    try {
+      assert.deepEqual({...upgraded.prepare("SELECT * FROM people").get()},{id:person,created_at:"2026-10-01T00:00:00Z",hubspot_account_id:"123",hubspot_contact_id:"101"});
+      assert.equal(upgraded.prepare("SELECT name FROM sqlite_master WHERE name='person_contacts'").get(),undefined);
+      assert.equal(upgraded.prepare("SELECT COUNT(*) AS n FROM person_claims").get().n,0);
+      assert.equal(upgraded.prepare("SELECT COUNT(*) AS n FROM audit WHERE action='person_schema_simplified'").get().n,1);
+    } finally { upgraded.close(); }
+    const restarted=createKitServer(config);restarted.store.close();
+  } finally { rmSync(dir,{recursive:true,force:true}); }
+});
+
+test("legacy multiple-contact references fail reviewably and roll the upgrade back", () => {
+  const dir=mkdtempSync(join(tmpdir(),"person-upgrade-conflict-")), filename=join(dir,"db.sqlite");
+  const legacy=new DatabaseSync(filename);
+  legacy.exec(`CREATE TABLE people(id TEXT PRIMARY KEY,created_at TEXT NOT NULL);
+    CREATE TABLE person_contacts(provider TEXT NOT NULL,account_id TEXT NOT NULL,contact_id TEXT NOT NULL,person_id TEXT NOT NULL REFERENCES people(id),PRIMARY KEY(provider,account_id,contact_id));
+    INSERT INTO people VALUES('person','2026-10-01T00:00:00Z');
+    INSERT INTO person_contacts VALUES('hubspot','123','101','person'),('hubspot','123','202','person');`);legacy.close();
+  try {
+    assert.throws(()=>createKitServer({database:filename,siteId:"example",writeToken:"w".repeat(40),readToken:"r".repeat(40),publicUrl:"http://localhost:4310",origins:["https://example.com"]}),{code:"IDENTITY_CONFLICT"});
+    const retained=new DatabaseSync(filename);
+    try { assert.equal(retained.prepare("SELECT COUNT(*) AS n FROM person_contacts").get().n,2);
+      assert.equal(retained.prepare("PRAGMA table_info(people)").all().length,2);
+    } finally { retained.close(); }
+  } finally { rmSync(dir,{recursive:true,force:true}); }
+});
 
 test("person resolution keeps identity separate from campaigns, future evidence and shared browsers", () => {
   const claims = [{personId:"p1",visitorSessionId:"a",occurredAt:"2026-10-01T00:00:00Z"}, {personId:"p1",visitorSessionId:"b",occurredAt:"2026-10-03T00:00:00Z"}];

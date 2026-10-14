@@ -35,7 +35,10 @@ export function openStore(filename, siteId, metaDestination, callrailConfig, goo
   }
   const meta = openMetaStore(db, siteId, metaDestination, transaction, audit);
   const googleAds = openGoogleStore(db, siteId, googleDestination, transaction, audit);
-  const people = openPersonStore(db, transaction, audit);
+  const people = (() => {
+    try { return openPersonStore(db, transaction, audit); }
+    catch (error) { db.close(); throw error; }
+  })();
   function collect(input, origin, now) {
     if (input.siteId !== siteId) throw new KitError("NOT_FOUND", "Website not available.", 404);
     const visitor = sessionReference(input.visitorId);

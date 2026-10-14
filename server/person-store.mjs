@@ -2,13 +2,32 @@ import { randomUUID } from "node:crypto";
 import { KitError, object, textValue, resolvePersonSessions } from "../core/index.mjs";
 
 export function openPersonStore(db, transaction, audit) {
-  db.exec(`CREATE TABLE IF NOT EXISTS people(id TEXT PRIMARY KEY,created_at TEXT NOT NULL);
+  transaction(() => {
+  db.exec(`CREATE TABLE IF NOT EXISTS people(id TEXT PRIMARY KEY,created_at TEXT NOT NULL,hubspot_account_id TEXT NOT NULL,hubspot_contact_id TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS person_sources(source TEXT PRIMARY KEY,provider TEXT NOT NULL,account_id TEXT NOT NULL);
-    CREATE TABLE IF NOT EXISTS person_contacts(provider TEXT NOT NULL,account_id TEXT NOT NULL,contact_id TEXT NOT NULL,person_id TEXT NOT NULL REFERENCES people(id),PRIMARY KEY(provider,account_id,contact_id));
-    CREATE INDEX IF NOT EXISTS person_contacts_person ON person_contacts(person_id);
     CREATE TABLE IF NOT EXISTS person_claims(source TEXT NOT NULL,external_id TEXT NOT NULL,person_id TEXT NOT NULL REFERENCES people(id),session_id TEXT NOT NULL REFERENCES sessions(id),contact_id TEXT NOT NULL,occurred_at TEXT NOT NULL,linked_at TEXT NOT NULL,PRIMARY KEY(source,external_id),FOREIGN KEY(source,external_id) REFERENCES outcomes(source,external_id));
     CREATE INDEX IF NOT EXISTS person_claims_session ON person_claims(session_id,person_id);
     CREATE INDEX IF NOT EXISTS person_claims_person ON person_claims(person_id,occurred_at);`);
+  // v0.3.7 stored CRM references separately. Preserve UUIDs and evidence on upgrade.
+  const columns = new Set(db.prepare("PRAGMA table_info(people)").all().map(row => row.name));
+  if (!columns.has("hubspot_account_id")) db.exec("ALTER TABLE people ADD COLUMN hubspot_account_id TEXT");
+  if (!columns.has("hubspot_contact_id")) db.exec("ALTER TABLE people ADD COLUMN hubspot_contact_id TEXT");
+  if (db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='person_contacts'").get()) {
+    const conflict = db.prepare(`SELECT person_id FROM person_contacts GROUP BY person_id HAVING COUNT(*)<>1
+      UNION ALL SELECT c.person_id FROM person_contacts c JOIN people p ON p.id=c.person_id
+      WHERE c.provider<>'hubspot' OR (p.hubspot_account_id IS NOT NULL AND p.hubspot_account_id<>c.account_id)
+      OR (p.hubspot_contact_id IS NOT NULL AND p.hubspot_contact_id<>c.contact_id) LIMIT 1`).get();
+    if (conflict) throw new KitError("IDENTITY_CONFLICT", "A legacy person has conflicting CRM references. Review the database before upgrading.", 500);
+    db.exec(`UPDATE people SET hubspot_account_id=(SELECT account_id FROM person_contacts WHERE person_id=people.id),
+      hubspot_contact_id=(SELECT contact_id FROM person_contacts WHERE person_id=people.id)
+      WHERE EXISTS(SELECT 1 FROM person_contacts WHERE person_id=people.id)`);
+    if (db.prepare("SELECT id FROM people WHERE hubspot_account_id IS NULL OR hubspot_contact_id IS NULL LIMIT 1").get())
+      throw new KitError("IDENTITY_CONFLICT", "A legacy person is missing its CRM reference. Review the database before upgrading.", 500);
+    db.exec("DROP TABLE person_contacts");
+    audit("person_schema_simplified", "v0.3.8", new Date().toISOString());
+  }
+  db.exec("CREATE UNIQUE INDEX IF NOT EXISTS people_hubspot_contact ON people(hubspot_account_id,hubspot_contact_id)");
+  });
   function linkHubSpot(raw, now) {
     const input = object(raw, "Identity link");
     if (Object.keys(input).some(key => !["accountId", "contactId", "source", "externalId"].includes(key))) throw new KitError("INVALID_INPUT", "Unsupported identity field.", 400);
@@ -24,11 +43,10 @@ export function openPersonStore(db, transaction, audit) {
       const binding = db.prepare("SELECT account_id FROM person_sources WHERE source=?").get(source);
       if (binding && binding.account_id !== accountId) throw new KitError("IDENTITY_CONFLICT", "This outcome source belongs to another portal. Use one source per portal.", 409);
       db.prepare("INSERT OR IGNORE INTO person_sources VALUES(?,?,?)").run(source, "hubspot", accountId);
-      let alias = db.prepare("SELECT person_id FROM person_contacts WHERE provider='hubspot' AND account_id=? AND contact_id=?").get(accountId, contactId);
+      let alias = db.prepare("SELECT id AS person_id FROM people WHERE hubspot_account_id=? AND hubspot_contact_id=?").get(accountId, contactId);
       if (!alias) {
         alias = { person_id: randomUUID() };
-        db.prepare("INSERT INTO people VALUES(?,?)").run(alias.person_id, now);
-        db.prepare("INSERT INTO person_contacts VALUES('hubspot',?,?,?)").run(accountId, contactId, alias.person_id);
+        db.prepare("INSERT INTO people(id,created_at,hubspot_account_id,hubspot_contact_id) VALUES(?,?,?,?)").run(alias.person_id, now, accountId, contactId);
       }
       const existing = db.prepare("SELECT * FROM person_claims WHERE source=? AND external_id=?").get(source, externalId);
       if (existing) {
@@ -43,8 +61,9 @@ export function openPersonStore(db, transaction, audit) {
   }
   function resolve(event, cache) {
     if (event.contactIds.length !== 1) return null;
-    const alias = db.prepare(`SELECT c.person_id,c.provider,c.account_id,c.contact_id FROM person_sources s JOIN person_contacts c
-      ON c.provider=s.provider AND c.account_id=s.account_id WHERE s.source=? AND c.contact_id=?`).get(event.source, event.contactIds[0]);
+    const alias = db.prepare(`SELECT p.id AS person_id,'hubspot' AS provider,p.hubspot_account_id AS account_id,p.hubspot_contact_id AS contact_id
+      FROM person_sources s JOIN people p ON s.provider='hubspot' AND p.hubspot_account_id=s.account_id
+      WHERE s.source=? AND p.hubspot_contact_id=?`).get(event.source, event.contactIds[0]);
     let rows = cache?.claims;
     if (!rows) {
       rows = db.prepare(`SELECT c.person_id AS personId,c.session_id AS visitorSessionId,c.occurred_at AS occurredAt
@@ -53,11 +72,11 @@ export function openPersonStore(db, transaction, audit) {
       AND json_extract(o.payload,'$.outcome')='received' AND json_array_length(o.payload,'$.contactIds')=1
       AND json_extract(o.payload,'$.contactIds[0]')=c.contact_id AND o.session_id=c.session_id AND o.occurred_at=c.occurred_at
       ORDER BY c.source,c.external_id LIMIT 5001`).all();
-      const historical = db.prepare(`SELECT COALESCE(a.person_id,'unregistered:hubspot:'||s.account_id||':'||json_extract(o.payload,'$.contactIds[0]')) AS personId,
+      const historical = db.prepare(`SELECT COALESCE(a.id,'unregistered:hubspot:'||s.account_id||':'||json_extract(o.payload,'$.contactIds[0]')) AS personId,
         o.session_id AS visitorSessionId,o.occurred_at AS occurredAt FROM outcomes o
         JOIN person_sources s ON s.source=o.source JOIN sessions v ON v.id=o.session_id
         LEFT JOIN person_claims c ON c.source=o.source AND c.external_id=o.external_id
-        LEFT JOIN person_contacts a ON a.provider=s.provider AND a.account_id=s.account_id AND a.contact_id=json_extract(o.payload,'$.contactIds[0]')
+        LEFT JOIN people a ON s.provider='hubspot' AND a.hubspot_account_id=s.account_id AND a.hubspot_contact_id=json_extract(o.payload,'$.contactIds[0]')
         WHERE c.source IS NULL AND json_extract(o.payload,'$.deleted')=0 AND json_extract(o.payload,'$.eventType')='form'
         AND json_extract(o.payload,'$.outcome')='received' AND json_array_length(o.payload,'$.contactIds')=1
         ORDER BY o.source,o.external_id LIMIT 5001`).all();
