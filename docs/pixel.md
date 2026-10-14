@@ -95,6 +95,10 @@ https://www.example.com/quote?utm_source=google&utm_medium=cpc&utm_campaign=setu
 
 Check that redirects preserve the tags and that the saved visit contains them. Do not tag internal navigation links: that can create false campaign touches. Do not put contact details or secrets into URLs. Literal ad-template placeholders remain literal until corrected upstream.
 
+Google's documented bare ValueTrack fields `campaignid`, `adgroupid`, `keyword`, `device`, `matchtype`, `network` and `creative` are retained as well. IDs stay strings, including long creative IDs. The URL must actually contain these fields after Google's macro expansion and any redirects; the pixel cannot reconstruct a field that never reached the page. See [Google's tracking-template example](https://support.google.com/google-ads/answer/10070427?hl=en) and [ValueTrack definitions](https://support.google.com/google-ads/answer/6305348?hl=en).
+
+`keyword` (or `utm_term={keyword}`) is the matched advertising keyword, not necessarily the person's search query. Google documents blank `{keyword}` values for keywordless AI Max, Dynamic Search Ads and Performance Max. Keep those blanks unavailable. Campaign IDs require an authorized Google Ads lookup or a supplied mapping to show campaign names; a generic Google referrer does not establish a paid campaign. Search-term reporting has separate privacy and availability limits.
+
 First touch is the earliest observed entry before an outcome; last touch includes direct returns; last non-direct excludes direct touches. Internal navigation retains entry source. A changed campaign or 30-minute inactivity gap can create a new touch. These are observed browser histories, not guaranteed cross-device identity.
 
 `getTrackingContext()` returns a session reference, not a UTM object. If the CRM needs acquisition fields, populate separate first/last fields through the server-side mapping. Do not append arbitrary UTM fields to the strict outcome API.

@@ -40,6 +40,20 @@ test("source fields are never merged between touches", () => {
   const touches = buildTouches(visits(), at("12", "14"));
   assert.deepEqual(touches.lastNonDirectTouch.parameters, { utm_source: "facebook" });
 });
+test("Google ValueTrack fields survive an entry touch and internal navigation without inventing a search query", () => {
+  const tags = {campaignid:"21155377610",adgroupid:"2222222222",keyword:"lawn care",device:"m",matchtype:"p",network:"g",creative:"120213456789012345"};
+  const landing = `https://example.com/?${new URLSearchParams(tags)}`;
+  assert.deepEqual(safePage(landing).parameters,tags);
+  const touches = buildTouches([
+    {id:"entry",visitorId:"a",url:landing,occurredAt:at("10","10"),referrer:null},
+    {id:"internal",visitorId:"a",url:"https://example.com/quote",occurredAt:"2026-10-10T10:02:00.000Z",referrer:"https://example.com/"},
+  ],at("10","11"));
+  assert.deepEqual(touches.lastTouch.parameters,tags);
+  assert.deepEqual(safePage("https://example.com/?keyword=&campaignid=21155377610").parameters,{campaignid:"21155377610"});
+  for (const [key,value] of [["keyword","private%2540example.com"],["keyword","4111111111111111"],["creative","1".repeat(33)],["network","token%253Dsecret"]]) {
+    assert.deepEqual(safePage(`https://example.com/?${new URLSearchParams({[key]:value})}`).parameters,{});
+  }
+});
 test("revenue counts only completed payments, retains zero, and separates currencies", () => {
   const rows = [fact({}), fact({ externalId: "jpy", currency: "JPY", amountMinor: 125050 }), fact({ externalId: "zero", amountMinor: 0 }), fact({ externalId: "unknown", amountMinor: null, currency: null }), fact({ externalId: "call", eventType: "call" }), fact({ externalId: "failed", outcome: "failed" })];
   const report = buildReport(rows, range, coverage);

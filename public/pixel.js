@@ -23,11 +23,11 @@
     "gad_campaignid", "hsa_acc", "hsa_cam", "hsa_grp", "hsa_ad",
     "campaign_id", "adset_id", "adgroup_id", "ad_id",
     "campaignid", "adsetid", "adgroupid", "adid",
-    "h_ad_id", "fbc_id", "gc_id",
+    "h_ad_id", "fbc_id", "gc_id", "creative",
   ]);
   const AD_METADATA_KEYS = new Set([
     "gad_source", "hsa_net", "hsa_src", "hsa_mt", "hsa_tgt", "hsa_kw", "hsa_ver", "hsa_la", "hsa_ol",
-    "g_special_campaign",
+    "g_special_campaign", "keyword", "matchtype", "network", "device",
   ]);
   const SENSITIVE_UTM_KEY = /(?:^|[_-])(?:email|phone|address|first[_-]?name|last[_-]?name|password|pwd|token|auth|authorization|secret|credential|jwt|csrf|xsrf|session|sessionid|ssn|card|credit[_-]?card|cvv|cvc|iban|bank|account[_-]?number|api[_-]?key|private[_-]?key)(?:$|[_-])/i;
 
