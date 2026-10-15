@@ -75,6 +75,8 @@ Leave the server running. Open `http://127.0.0.1:4310/` and sign in with the gen
 
 Use the exact host and port configured for each origin: `localhost` and `127.0.0.1` are different origins. Dashboard sign-in uses the configured collector origin; the test website uses `KIT_ALLOWED_ORIGINS`. If you change the collector's local port, also set `PORT` in `.env` before starting. HTTP loopback needs no public DNS or TLS certificate. A public deployment still requires HTTPS, persistent hosting and backups.
 
+For several local kit instances, use separate browser profiles or distinct hostnames with matching configuration. Dashboard cookies are scoped to the hostname, not its port: signing into a second instance on the same hostname replaces the first instance's dashboard login. Separate ports still keep their databases and credentials isolated.
+
 ## Add HTTPS and network routing
 
 Point the selected tracking hostname at the server and use the existing Caddy/nginx/equivalent reverse proxy. A host-installed Caddy routing example is:
