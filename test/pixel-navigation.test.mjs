@@ -47,9 +47,16 @@ test('SPA navigation preserves queued pages and consent without external browser
   await settle();
   assert.equal(bodies[3].url, 'https://example.com/quote');
   assert.equal(bodies[3].referrer, 'https://search.test');
+  location.hash = '#/reset/private-reset-token?utm_campaign=roof&email=private%40example.com';
+  listeners.get('hashchange')({newURL:location.href});
+  await settle();
+  assert.equal(bodies[4].url,'https://example.com/quote#/reset/[redacted]?utm_campaign=roof');
+  listeners.get('popstate')(); await settle();
+  assert.equal(bodies.length,5);
   tracker.consent(false);
   assert.equal(window.history.pushState, nativePush);
   assert.equal(listeners.has('popstate'), false);
+  assert.equal(listeners.has('hashchange'), false);
   window.history.pushState({}, '', '/denied'); await settle();
-  assert.equal(bodies.length, 4);
+  assert.equal(bodies.length, 5);
 });

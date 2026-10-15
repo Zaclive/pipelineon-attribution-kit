@@ -74,6 +74,44 @@
   }
 
   var privateValue = /[\x00-\x1f\x7f<>@]|(?:bearer\s|password|access_token|api_key|secret=)/i;
+
+  // Recognize common SPA routes, not ordinary anchors or authentication fragments.
+  function hashRoute(value) {
+    if (typeof value !== "string" || value.length > 8192) return null;
+    var match = /^(#!?)(\/(?!\/)[^#]*)/.exec(value);
+    if (!match) return null;
+    try {
+      var url = new URL(match[2], "https://route.invalid");
+      if (url.origin !== "https://route.invalid") return null;
+      return { prefix: match[1], url };
+    } catch { return null; }
+  }
+
+  // Hash routes receive the same bounded decoding and secret-path protection as
+  // normal pages. Shared with the standalone pixel's unbundled implementation.
+  function safeHashPath(pathname) {
+    function decoded(value) {
+      for (var round = 0; round < 4; round++) {
+        try { value = decodeURIComponent(value); } catch { return null; }
+        if (!/%[0-9a-f]{2}/i.test(value)) return value;
+      }
+      return null;
+    }
+    var parts = pathname.split("/");
+    return parts.map(function (part, index) {
+      if (!part) return part;
+      var value = decoded(part);
+      var previous = decoded(parts[index - 1] || "");
+      if (value === null || /[\x00-\x1f\x7f<>@]/.test(value) ||
+          /^(?:auth|authorization|code|confirm|credential|invite|magic|oauth|password|password-reset|payment|redeem|reset|secret|session|token|verification|verify)$/i.test(previous || "") ||
+          !safeAttributionParameter("utm_route", value) ||
+          (value.length >= 24 && /^[A-Za-z0-9._~-]+$/.test(value) &&
+            (/^[a-f0-9]{24,}$/i.test(value) || /^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(value) ||
+              /[a-z]/i.test(value) && /\d/.test(value) && (value.match(/[-._~]/g) || []).length <= 1))) return "[redacted]";
+      return part;
+    }).join("/");
+  }
+
   function safeUrl(raw) {
     try {
       var input = new URL(raw);
@@ -89,6 +127,15 @@
         value = value.trim();
         if (safeAttributionParameter(key, value) && !privateValue.test(value) && !out.searchParams.has(key)) out.searchParams.set(key, value);
       });
+      var route = hashRoute(input.hash);
+      if (route) {
+        route.url.pathname = safeHashPath(route.url.pathname);
+        var safeRoute = safeUrl(route.url.href);
+        if (safeRoute) {
+          var routeUrl = new URL(safeRoute);
+          out.hash = route.prefix.slice(1) + routeUrl.pathname + routeUrl.search;
+        }
+      }
       return out.href;
     } catch (_) { return null; }
   }
@@ -102,9 +149,10 @@
       if (!shared) {
         shared = { listeners: [], methods: {} };
         window[key] = shared;
-        var notify = function () {
+        var notify = function (event) {
+          var pageUrl = event && typeof event.newURL === "string" ? event.newURL : location.href;
           shared.listeners.slice().forEach(function (callback) {
-            try { callback(); } catch (_e) {}
+            try { callback(pageUrl, event && event.type); } catch (_e) {}
           });
         };
         ["pushState", "replaceState"].forEach(function (name) {
@@ -122,6 +170,7 @@
         });
         shared.popstate = notify;
         window.addEventListener("popstate", notify);
+        window.addEventListener("hashchange", notify);
       }
       shared.listeners.push(listener);
       return function () {
@@ -130,6 +179,7 @@
         shared.listeners.splice(index, 1);
         if (shared.listeners.length) return;
         window.removeEventListener("popstate", shared.popstate);
+        window.removeEventListener("hashchange", shared.popstate);
         Object.keys(shared.methods).forEach(function (name) {
           var method = shared.methods[name];
           try { if (history[name] === method.wrapped) history[name] = method.original; } catch (_e) {}
@@ -137,8 +187,8 @@
         if (window[key] === shared) delete window[key];
       };
     }
-  function navigationSnapshot(referrer) {
-    return { url: safeUrl(location.href), referrer: referrer, occurredAt: new Date().toISOString() };
+  function navigationSnapshot(referrer, pageUrl) {
+    return { url: safeUrl(pageUrl || location.href), referrer: referrer, occurredAt: new Date().toISOString() };
   }
   function consent(granted) {
     generation++;
@@ -154,14 +204,25 @@
     try { visitor = localStorage.getItem(storageKey); } catch (_) { visitor = null; }
     if (!/^[0-9a-f-]{36}$/i.test(visitor || "")) visitor = crypto.randomUUID();
     try { localStorage.setItem(storageKey, visitor); } catch (_) { /* This visit remains memory-only. */ }
-    var previousKey = location.pathname + location.search;
+    var previousBase = location.pathname + location.search;
+      var previousRoute = hashRoute(location.hash);
+      var previousKey = previousBase + (previousRoute ? previousRoute.prefix + previousRoute.url.pathname + previousRoute.url.search : "");
     var previousPage = safeUrl(location.href);
-    navigationCleanup = observeNavigation(function () {
+    navigationCleanup = observeNavigation(function (pageUrl, navigationEvent) {
       if (!permitted()) return;
-      var nextKey = location.pathname + location.search;
+      var nextLocation = new URL(pageUrl || location.href);
+      var nextBase = nextLocation.pathname + nextLocation.search;
+      // Hash traversal also emits popstate. Its hashchange event carries the
+      // exact destination, including when several native changes are queued.
+      if (navigationEvent === "popstate" && nextBase === previousBase) return;
+      var nextRoute = hashRoute(nextLocation.hash);
+      // Ordinary section links do not turn a hash route into a new base page.
+      if (nextBase === previousBase && !nextRoute && nextLocation.hash) return;
+      var nextKey = nextBase + (nextRoute ? nextRoute.prefix + nextRoute.url.pathname + nextRoute.url.search : "");
       if (nextKey === previousKey) return;
       previousKey = nextKey;
-      var page = navigationSnapshot(previousPage);
+      previousBase = nextBase;
+      var page = navigationSnapshot(previousPage, pageUrl);
       previousPage = page.url;
       track(page);
     });

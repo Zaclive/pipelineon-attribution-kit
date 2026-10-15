@@ -45,7 +45,7 @@ tracker?.consent(true); // Only after permission from your consent manager.
 
 If you inject the script only after consent, `data-consent="granted"` enables it on load. Optional chaining avoids an error but does not retry a consent call made before the script loads: wire both script readiness and consent changes into your existing consent manager. Global Privacy Control disables collection.
 
-SPA path and query navigation is observed automatically through `pushState`, `replaceState` and back/forward navigation. Keep one installed script; remove older router callbacks that also call `tracker.track()` for those navigations to avoid counting twice. State-only updates and hash-only anchors do not create pageviews. Hash-router routes are not supported by this path/query observer.
+SPA path/query navigation and common `#/` or `#!/` hash routes are observed automatically through `pushState`, `replaceState`, native hash changes and back/forward navigation. Keep one installed script; remove older router callbacks that also call `tracker.track()` for those navigations to avoid counting twice. State-only updates, ordinary section anchors and authentication fragments do not create pageviews. Route paths and campaign queries are sanitized before collection and storage; hash route campaign parameters are available to attribution reporting, with outer query values taking precedence within the same URL.
 
 Rapid changes are queued with their original sanitized URLs and internal referrers. Consent withdrawal clears queued routes and removes this site's navigation observer. A long-lived app can produce more pageviews without creating a new browser document; hosted page-load timing diagnostics remain document-level measurements.
 
