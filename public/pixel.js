@@ -13,7 +13,8 @@
   var visitor = null;
   var context = null;
   var busy = false;
-  var pending = false;
+  var pending = [];
+  var navigationCleanup = null;
   // Shared by ingestion and reporting. Keep the standalone pixel implementations
   // in sync; pixelLoaderSafety.test.ts exercises their output through ingestion.
   const CLICK_ID_KEYS = new Set([
@@ -93,12 +94,59 @@
   }
   function permitted() { return enabled && navigator.globalPrivacyControl !== true; }
   function getContext() { return permitted() && context ? { siteId: site, visitorSessionId: context } : null; }
+    function observeNavigation(listener) {
+      var history = window.history;
+      if (!history) return function () {};
+      var key = "__OPEN_ATTRIBUTION_NAVIGATION__";
+      var shared = window[key];
+      if (!shared) {
+        shared = { listeners: [], methods: {} };
+        window[key] = shared;
+        var notify = function () {
+          shared.listeners.slice().forEach(function (callback) {
+            try { callback(); } catch (_e) {}
+          });
+        };
+        ["pushState", "replaceState"].forEach(function (name) {
+          var original = history[name];
+          if (typeof original !== "function") return;
+          var wrapped = function () {
+            var result = original.apply(this, arguments);
+            notify();
+            return result;
+          };
+          try {
+            history[name] = wrapped;
+            if (history[name] === wrapped) shared.methods[name] = { original: original, wrapped: wrapped };
+          } catch (_e) {}
+        });
+        shared.popstate = notify;
+        window.addEventListener("popstate", notify);
+      }
+      shared.listeners.push(listener);
+      return function () {
+        var index = shared.listeners.indexOf(listener);
+        if (index < 0) return;
+        shared.listeners.splice(index, 1);
+        if (shared.listeners.length) return;
+        window.removeEventListener("popstate", shared.popstate);
+        Object.keys(shared.methods).forEach(function (name) {
+          var method = shared.methods[name];
+          try { if (history[name] === method.wrapped) history[name] = method.original; } catch (_e) {}
+        });
+        if (window[key] === shared) delete window[key];
+      };
+    }
+  function navigationSnapshot(referrer) {
+    return { url: safeUrl(location.href), referrer: referrer, occurredAt: new Date().toISOString() };
+  }
   function consent(granted) {
     generation++;
+    if (navigationCleanup) { navigationCleanup(); navigationCleanup = null; }
     enabled = granted === true && navigator.globalPrivacyControl !== true;
     context = null;
     if (!enabled) {
-      pending = false;
+      pending = [];
       visitor = null;
       try { localStorage.removeItem(storageKey); } catch (_) { /* Browser storage can be unavailable. */ }
       return;
@@ -106,20 +154,30 @@
     try { visitor = localStorage.getItem(storageKey); } catch (_) { visitor = null; }
     if (!/^[0-9a-f-]{36}$/i.test(visitor || "")) visitor = crypto.randomUUID();
     try { localStorage.setItem(storageKey, visitor); } catch (_) { /* This visit remains memory-only. */ }
+    var previousKey = location.pathname + location.search;
+    var previousPage = safeUrl(location.href);
+    navigationCleanup = observeNavigation(function () {
+      if (!permitted()) return;
+      var nextKey = location.pathname + location.search;
+      if (nextKey === previousKey) return;
+      previousKey = nextKey;
+      var page = navigationSnapshot(previousPage);
+      previousPage = page.url;
+      track(page);
+    });
     track();
   }
-  async function track() {
+  async function track(pageSnapshot) {
     if (!permitted() || !visitor) return;
-    if (busy) { pending = true; return; }
-    var url = safeUrl(location.href);
-    if (!url) return;
+    var page = pageSnapshot || navigationSnapshot(document.referrer ? new URL(document.referrer).origin : null);
+    if (!page.url) return;
+    if (busy) { if (pending.length < 50) pending.push(page); return; }
     var epoch = generation;
     busy = true;
     try {
-      var referrer = document.referrer ? new URL(document.referrer).origin : null;
       var response = await fetch(endpoint + "/v1/collect", { method: "POST", credentials: "omit", keepalive: true,
         headers: { "Content-Type": "application/json" }, body: JSON.stringify({ siteId: site, visitorId: visitor,
-          eventId: crypto.randomUUID(), occurredAt: new Date().toISOString(), url: url, referrer: referrer }) });
+          eventId: crypto.randomUUID(), occurredAt: page.occurredAt, url: page.url, referrer: page.referrer }) });
       if (!response.ok) return;
       var result = await response.json();
       if (generation !== epoch || !permitted()) return;
@@ -128,10 +186,9 @@
         window.dispatchEvent(new CustomEvent("open-attribution:session", { detail: getContext() }));
       }
     } catch (_) { /* Tracking failure never prevents navigation or form submission. */ }
-    finally { busy = false; if (pending) { pending = false; track(); } }
+    finally { busy = false; if (permitted() && pending.length) track(pending.shift()); }
   }
-  registry.sites[site] = { consent: consent, track: track, getTrackingContext: getContext };
-  window.addEventListener("popstate", track);
+  registry.sites[site] = { consent: consent, track: function () { return track(); }, getTrackingContext: getContext };
   document.addEventListener("submit", function (event) {
     var form = event.target;
     if (!(form instanceof HTMLFormElement) || form.dataset.attributionSite !== site) return;

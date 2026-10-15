@@ -47,7 +47,7 @@ function () {
 
 Read it inside the form's supported pre-serialization callback, or use the kit's native form attribute. Preserve the enquiry when it is empty. A generic GTM Form Submission or button-click trigger does not prove that the server saved anything; confirmed outcomes still come from the backend/CRM.
 
-For an SPA, run `window.OpenAttribution.sites['your-website'].track()` after a successful route change once the tracker exists. Coordinate with existing navigation hooks so the same route change is not counted twice.
+The pixel automatically observes SPA path/query changes and back/forward navigation. Fire the installation tag once, and remove older router callbacks that also call `track()` for the same navigation. State-only updates and hash-only anchors are ignored; hash-router routes are not supported by this observer.
 
 ## PipelineOn hosted installation
 

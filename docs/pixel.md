@@ -45,7 +45,9 @@ tracker?.consent(true); // Only after permission from your consent manager.
 
 If you inject the script only after consent, `data-consent="granted"` enables it on load. Optional chaining avoids an error but does not retry a consent call made before the script loads: wire both script readiness and consent changes into your existing consent manager. Global Privacy Control disables collection.
 
-For an SPA, call `tracker?.track()` after successful router navigation. Back/forward navigation is observed automatically. Do not reinstall the script on each route.
+SPA path and query navigation is observed automatically through `pushState`, `replaceState` and back/forward navigation. Keep one installed script; remove older router callbacks that also call `tracker.track()` for those navigations to avoid counting twice. State-only updates and hash-only anchors do not create pageviews. Hash-router routes are not supported by this path/query observer.
+
+Rapid changes are queued with their original sanitized URLs and internal referrers. Consent withdrawal clears queued routes and removes this site's navigation observer. A long-lived app can produce more pageviews without creating a new browser document; hosted page-load timing diagnostics remain document-level measurements.
 
 ## Use the correct PipelineOn interface
 
