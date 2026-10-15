@@ -22,7 +22,7 @@ Record the deployed version, website/source account, test enquiry/job/payment ID
 | Isolation | Another site's reference never creates a cross-client link. Credentials remain scoped. |
 | Restart | Facts, queued work and receipts survive restart; replay is not a second payment. |
 
-For the kit, query `/v1/report?from=<ISO>&to=<ISO>&model=first_touch`, then `last_touch` and `last_non_direct` with a read token. Ranges are start-inclusive/end-exclusive, at most 31 days. Inspect disclosed history limits. `/v1/export` provides stored outcome facts; page through all results when needed.
+For the kit, query `/v1/report?from=<ISO>&to=<ISO>&model=first_touch`, then `last_touch` and `last_non_direct` with a read token. Ranges are start-inclusive/end-exclusive, with no fixed calendar-length cap; evidence row budgets still apply. Inspect disclosed history limits. `/v1/export` provides stored outcome facts; page through all results when needed.
 
 PipelineOn uses its own attribution UI/API and import receipts. Follow the wrapper/scopes in the [API reference](api.md#send-to-the-correct-api). Do not assume its response shape is the kit's.
 

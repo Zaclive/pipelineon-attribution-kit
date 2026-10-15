@@ -104,7 +104,9 @@ test("reject malformed money, times, session references, and ranges", () => {
   assert.throws(() => timestamp("2026-10-12T24:00:00Z", "date"));
   assert.equal(timestamp("2024-02-29T12:00:00-05:00", "date"), "2024-02-29T17:00:00.000Z");
   for (const bad of [{ amountMinor: -1 }, { amountMinor: 1.5 }, { currency: "usd" }, { amountMinor: null }, { occurredAt: "yesterday" }, { occurredAt: at("13", "00") }, { visitorSessionId: "another-site" }]) assert.throws(() => fact(bad));
-  assert.throws(() => reportRange({ ...range, from: "2025-01-01T00:00:00Z" }, at("14", "00")));
+  assert.equal(reportRange({ ...range, from: "2025-01-01T00:00:00Z" }, at("14", "00")).from, "2025-01-01T00:00:00.000Z");
+  assert.throws(() => reportRange({ ...range, from: range.to }, at("14", "00")));
+  assert.throws(() => reportRange({ ...range, to: "2027-01-01T00:00:00Z" }, at("14", "00")));
   assert.throws(() => reportRange({ ...range, model: "magic" }, at("14", "00")));
 });
 test("CallRail adapter rejects other accounts and incomplete calls, preserving original call time", () => {
