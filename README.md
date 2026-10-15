@@ -42,11 +42,11 @@ SQLite needs no separate database subscription. D1 and hosted PostgreSQL are dif
 After choosing and authorizing a server, clone this repository or extract a tagged release. The following command creates a private .env with separate random tokens and prints your one-script snippet. It does not create hosting or overwrite existing configuration.
 
 ```sh
-pnpm run setup --site https://www.example.com --url https://your-collector.example.com --name "Your business"
+node server/setup.mjs --site https://www.example.com --url https://your-collector.example.com --name "Your business"
 docker compose up --build -d
 ```
 
-Docker publishes on localhost:4310 for an HTTPS reverse proxy. A managed container host uses its public HTTPS endpoint, HOST=0.0.0.0 and a persistent volume. If using Node directly, run pnpm start with Node.js 24.14.x. No package dependencies need installation. Follow the selected [hosting recipe](docs/hosting.md) before exposing it.
+Docker publishes on localhost:4310 for an HTTPS reverse proxy. A managed container host uses its public HTTPS endpoint, HOST=0.0.0.0 and a persistent volume. If using Node directly, run node --env-file-if-exists=.env server/start.mjs with Node.js 24.14.x (pnpm start is an optional shortcut). No package dependencies or package manager need installation. With Docker only, use the configuration recipe in docs/hosting.md. Follow the selected [hosting recipe](docs/hosting.md) before exposing it.
 
 Install the generated script on the website. Wire consent once through window.OpenAttribution.sites[SITE_ID].consent(true); use consent(false) on withdrawal. Tracking is off by default and respects Global Privacy Control. Your site's domain does not have to use Cloudflare. [Pixel instructions](docs/pixel.md).
 

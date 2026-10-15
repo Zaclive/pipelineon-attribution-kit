@@ -2,7 +2,7 @@
   "documentType": "crm_adapter_design_worksheet_not_api_payload",
   "worksheetVersion": 1,
   "instructions": "Fill from the actual provider API/schema and customer definitions. Null means unresolved, not an optional runtime default. Do not POST this worksheet to the importer.",
-  "contract": "kit_v0.2_outcome_fields_or_hosted_wrapper_in_INTEGRATIONS.md",
+  "contract": "outcome_v1_or_hosted_wrapper_in_docs/api.md",
   "source": {
     "provider": null,
     "accountId": null,
