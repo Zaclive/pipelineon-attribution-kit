@@ -106,7 +106,8 @@ test('pixel and GTM accept site IDs matching object prototype names without dupl
     assert.equal(tracker.getTrackingContext(), null);
     runInNewContext(pixel, context);
     assert.equal(context.window.OpenAttribution.sites[site], tracker);
-    assert.deepEqual(events, ['popstate', 'submit']);
+    // Navigation observation is installed only after consent is granted.
+    assert.deepEqual(events, ['submit']);
     assert.equal(Object.getPrototypeOf(context.window.OpenAttribution.sites), null);
     assert.equal(Object.getPrototypeOf(context.window.__poKitGtm), null);
   }
