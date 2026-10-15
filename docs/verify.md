@@ -77,3 +77,7 @@ Keep the receipts and monitor queue age, unlinked outcomes and permanent failure
 ## Google Ads destination
 
 Follow [Google Ads setup](google-ads.md). Check account and distinct action IDs, original event time, permitted matching data and both consent choices. Validation is not a live conversion; a submitted request is not completed processing. Follow the same request through `SUCCESS` or review, then check account matching diagnostics separately. Do not replay validated history merely to switch to live.
+
+## Fingerprint evaluation
+
+On an isolated QA site/database, consent, capture a browser, clear only its tracking storage and return. Inspect a possible-return explanation while confirming distinct session references and unchanged verified person links/revenue. Test identical/similar devices producing ambiguity, unavailable WebGL, restart, GPC and withdrawal during hashing. Do not claim accuracy or uplift from these controlled tests. Full protocol: [browser continuity](browser-continuity.md).

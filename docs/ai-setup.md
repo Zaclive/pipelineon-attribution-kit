@@ -1,64 +1,31 @@
-# Give this setup task to your coding assistant
+# Agent-led installation
 
-Use a coding assistant that can inspect your website/backend and run commands. The kit's read-only MCP tools can inspect reports and receipts; deployment and CRM-adapter development require a separate authorized coding environment.
+Start at README.md and package.json at the checked-out release. You are a coding/deployment agent; the kit's read-only MCP cannot provision infrastructure. Read docs/setup.md as the single acceptance checklist. Other guides are references for the selected route, not competing installation flows.
 
-Fill in [setup-brief.template.json](../examples/setup-brief.template.json). Store credential locations there, never values. Keep tokens in local ignored configuration or a hosting secret store. Supply access through secure connection flows. The owner supplies business definitions, consent decisions and authorized provider access; an assistant must not infer them.
+## First conversation
 
-## Copy this task
+Use the owner's supplied context. Ask one grouped question only for missing facts: website/CMS and access, existing CRM or outcome source, desired managed versus self-hosted route, existing server resources, monthly budget and consent manager. Do not ask again for an answered decision.
 
-```text
-Implement website-to-CRM attribution for my setup brief using this repository.
+Present these practical options before provisioning:
 
-1. Read package.json, README.md and docs/setup.md at the installed commit.
-   Follow docs/hosting.md, docs/pixel.md, docs/crm.md and docs/api.md.
-   Use docs/gtm.md, docs/events.md, docs/meta.md, docs/google-ads.md and docs/callrail.md when needed; verify with
-   docs/verify.md. Record the version and existing integrations. Preserve
-   working form handlers and unrelated product functionality.
+1. PipelineOn: recommended for least maintenance. No kit server or separate kit database. Explain its current plan and supported connectors from the actual account; do not invent a price or assume every CRM is connected.
+2. Railway Docker plus persistent SQLite: simplest packaged self-hosting. Explain the current resource allowance/usage bill and ongoing backups.
+3. Existing server/VPS Docker: control and potentially lower incremental cost, with more maintenance. An eligible free VM or limited free allowance may work, subject to capacity and uptime.
 
-2. Make a short implementation checklist. Reuse my selected hosting and existing
-   backend/workflow where practical. PipelineOn needs no separate kit server.
-   The kit needs Node.js 24.14.x and persistent SQLite storage; do not deploy
-   it unchanged as a Cloudflare Worker or stateless function.
+Cloudflare is optional for a pixel proxy or custom adapter; the unchanged kit does not run on Workers/D1. Do not require a website to move hosts, use Cloudflare DNS or purchase a new CRM. SQLite is already included. PostgreSQL/D1 ports are custom development, not supported deployment choices. Keep CRM, hosting, storage and advertising-account costs separate. Check sources in docs/hosting.md against the owner's currency and provider account before committing a budget.
 
-3. Fill examples/crm-mapping.template.json from the actual source API/schema and
-   my business definitions. Locate enquiry/job relationships, the accepted session,
-   stable activity IDs, occurrence/revision times, qualification and payment units.
-   Keep original fields and unknown values. Ask only about unresolved facts.
+## Implement the selected route
 
-4. Configure authorized accounts and secrets. Use separate random read/write
-   tokens for the self-hosted kit. Keep source credentials and destination write
-   tokens on trusted servers. Never put secrets in a public document, commit,
-   website script or URL. Reuse existing authorization. If account creation,
-   purchase or access approval needs owner action, identify that exact step and
-   continue independent work.
+Record a short checklist and version. Inspect the website/form handlers, actual CRM schema, accepted business definitions, permissions and existing conversion senders. Reuse existing backend/workflow and valid authorizations. Request only missing owner decisions/access; provider UI security or new spending can still require the owner. This guide does not authorize spending or access to unrelated accounts.
 
-5. Install the correct consent-controlled pixel. Carry its accepted reference
-   through the real form provider into the saved enquiry. Import a successful
-   outcome only after the backend/CRM confirms it. Do not invent a browser
-   Purchase API. Missing tracking must never block a customer action.
+For PipelineOn, copy the real site snippet and use its supported connection or website-scoped outcome API. Do not deploy a kit server as well. For self-hosting, provision the approved always-on Node/Docker service and persistent disk, run pnpm run setup --site WEBSITE_ORIGIN --url COLLECTOR_ORIGIN --name BUSINESS_NAME, and store .env privately. The setup command generates secrets but does not provision hosting. Configure the chosen host and HTTPS using docs/hosting.md; confirm /health and private endpoint authentication. Never overwrite an existing .env or database to redo setup.
 
-6. Reuse a suitable native connector or build one minimal adapter. Authenticate
-   requests, pin the tenant/site, queue durably, normalize, retry safely and retain
-   receipts. Do not expose an unauthenticated JSON-to-Meta relay. If Cloudflare is
-   chosen, implement the receiver, queue, consumer and recovery requirements in
-   docs/crm.md. Verify the real provider authentication and field names.
+Install the generated single script and connect consent/GPC handling using docs/pixel.md. Preserve the accepted session reference with the real enquiry. Map authoritative CRM/API/webhook/CSV events using docs/crm.md and docs/events.md; incomplete or unknown fields stay unknown. Keep credentials in server secret storage. Never put a write token in the pixel or a public worksheet.
 
-7. Pass the attribution checks before enabling advertising. Inventory existing
-   senders and assign one owner per conversion. Start Meta in test mode and Google in validation mode, then run
-   docs/verify.md. Preserve original times and stable IDs through retries. Never
-   invent consent, qualification, payment or a successful provider receipt.
+Fingerprint evaluation is included in the consented pixel. Follow docs/browser-continuity.md: observe candidate evidence, never promote it to a verified person link. The matching rules are diagnostic, not calibrated probabilities. Keep advertising disabled until the source-to-outcome path works. When requested, configure one conversion sender and test Meta/Google separately using their guides.
 
-8. Verify the actual website and mobile form. Hand over deployed version, files
-   changed, source mappings, required secret NAMES, redacted test IDs/receipts,
-   linkage and revenue results, replay/restart results, rollback steps and blockers.
-   Mark each step passed, failed, blocked or not tested. Mock success is not live
-   provider acceptance; a firing pixel or an HTTP 200 alone is not completed setup.
-```
+## Finish with proof
 
-## Resume and operate
+Follow docs/verify.md for one tagged consented visit, accepted enquiry, authoritative outcome with original timestamp/amount/currency, persisted report, replay, restart, consent withdrawal and mobile/desktop form checks. Test cookie reset and ambiguous fingerprints in an isolated QA site/database; no synthetic payments in live reports. A deployment or script load alone is incomplete.
 
-Save the completed brief, mapping worksheet and redacted receipts in your private deployment repository. On later runs, inspect those and durable state before changing anything. Repair failed stages instead of recreating datasets, rotating working keys, importing all payments again or installing another pixel.
-
-For reporting, connect the kit's `/mcp` using the read token and a client supporting authenticated Streamable HTTP. See the [exact tools and protocol](api.md#reports-tracking-doctor-and-assistant-tools). A write token belongs in the authorized adapter, not the read-only reporting connection.
-
-These instructions are an implementation task, not a universal one-click installer. Inaccessible forms, missing API access, account reviews or unknown CRM meanings remain explicit blockers until resolved.
+Hand back: installed version, selected hosting/cost assumptions, protected credential locations (not values), pixel location, consent wiring, source mapping, exact observed receipts, maintenance/backup responsibilities and any missing verification. Mark unavailable steps as unavailable. Saving a destination, submitting an event, provider acceptance, ad matching and performance lift are separate results.

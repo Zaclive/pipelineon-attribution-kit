@@ -23,6 +23,21 @@ function monies(values) { return Object.entries(values).map(([currency, amount])
 function render(data) {
   current = data;
   const r = data.report;
+  const continuity = $("continuity"); continuity.replaceChildren(); continuity.hidden = !data.continuity;
+  if (data.continuity) {
+    const c = data.continuity;
+    continuity.append(el("h2","Browser matching evidence"),el("p",c.explanation,"small"));
+    continuity.append(el("p",c.observations.length + " saved evaluations in this sample · " + (c.counts.possible_return || 0) + " possible returns · " + (c.counts.ambiguous || 0) + " ambiguous · " + (c.counts.no_match || 0) + " without a match · " + (c.counts.history_limited || 0) + " incomplete comparisons","small"));
+    if (!c.observations.length) continuity.append(el("p","No saved evaluations in this period. This does not mean there were no visitors.","small"));
+    for (const row of c.observations.slice(0,20)) {
+      const detail=el("details",""); detail.append(el("summary",row.evidence.status.replaceAll("_"," ") + " · browser " + row.visitorSessionId.slice(0,8) + " · " + new Date(row.evaluatedAt).toLocaleString()));
+      detail.append(el("p",row.evidence.inspected + " earlier signatures inspected. " + row.evidence.reasons.map(value=>value.replaceAll("_"," ")).join(". "),"small"));
+      detail.append(el("p","Available: " + (row.evidence.availableComponents?.join(", ") || "none") + ". Unavailable: " + (row.evidence.unavailableComponents?.join(", ") || "none") + ".","small"));
+      for (const candidate of row.evidence.candidates) detail.append(el("p","Earlier browser " + candidate.visitorSessionId + " · rule score " + candidate.score + "/" + candidate.maximumScore + ". Agreed: " + candidate.matched.join(", ") + ". Changed: " + (candidate.changed.join(", ") || "none") + ". Unavailable: " + (candidate.unavailable.join(", ") || "none") + ".","small"));
+      continuity.append(detail);
+    }
+    if (c.limited || c.observations.length>20) continuity.append(el("p","Showing up to 20 evaluations; export includes up to 100. Narrow the period for more evidence.","small"));
+  }
   $("coverage").hidden = !r.coverage.limited && !r.partialHistories;
   $("coverage").textContent = r.coverage.limited ? "Outcome coverage is incomplete. Choose a shorter period before making decisions." : `All saved activities are included. ${r.partialHistories} have incomplete visit history, so their attribution may be incomplete.`;
   const metrics = [["Conversions", String(r.totals.conversions), "Received or completed forms, calls, bookings and payments"], ["Connected conversions", String(r.linkedConversions), `${r.unlinkedConversions} still unattributed`], ["Payment revenue", monies(r.totals.revenueByCurrency), `${r.totals.payments} completed payments`], ["Stage changes", String(r.totals.stageChanges), "CRM activity, separate from conversions"]];
@@ -87,6 +102,7 @@ async function load() {
   $("metrics").replaceChildren();
   $("journeys").replaceChildren(); $("journeys").hidden = true;
   $("people").replaceChildren(); $("people").hidden = true;
+  $("continuity").replaceChildren(); $("continuity").hidden = true;
   $("report-summary").textContent = "";
   $("source-table").replaceChildren(el("p", "Loading report…", "empty"));
   $("checks").replaceChildren();

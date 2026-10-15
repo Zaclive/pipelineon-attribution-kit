@@ -7,11 +7,14 @@ export const MODELS: Model[];
 export interface Touch { url: string; referrer: string | null; occurredAt: string; visitorId: string | null; parameters: Record<string, string>; sourceLabel: string; }
 export interface Touches { timeline?: Touch[]; firstTouch: Touch | null; lastTouch: Touch | null; lastNonDirectTouch: Touch | null; historyLimited: boolean; }
 export interface Outcome { externalId: string; source: string; eventType: string; occurredAt: string; sourceUpdatedAt: string; outcome: string; qualification: string; visitorSessionId: string | null; amountMinor: number | null; currency: string | null; deleted: boolean; contactIds: string[]; direction: string; label: string; meta?: MetaEnvelope; googleAds?: GoogleEnvelope; businessEvent?: BusinessEvent; }
-export interface ReportRow { externalId: string; source: string; eventType: string; occurredAt: string | null; sourceUpdatedAt: string; outcome: string; qualification?: string; amountMinor?: number | null; currency?: string | null; deleted: boolean; attribution?: { status: string; evidence: string | null; touches: Touches | null; person?: PersonReference }; }
+export interface DealValue { id: string; amountMinor: number | null; currency: string | null; }
+export interface DealDetails { name: string | null; contacts: Array<{ name: string | null; address: string | null }>; }
+export interface ReportRow { externalId: string; source: string; eventType: string; occurredAt: string | null; sourceUpdatedAt: string; outcome: string; qualification?: string; amountMinor?: number | null; currency?: string | null; deleted: boolean; label?: string; detail?: string; sourceUrl?: string; dealValue?: DealValue; dealDetails?: DealDetails; attribution?: { status: string; evidence: string | null; touches: Touches | null; person?: PersonReference }; }
+export interface ReportActivity { id: string; groupId: string; source: string; externalId: string; eventType: string; occurredAt: string; outcome: string; label: string; detail: string; sourceUrl: string | null; personId?: string | null; conversion: boolean; linked: boolean; status: string; evidence: string | null; historyLimited: boolean; amountMinor: number | null; currency: string | null; dealValue: (DealValue & { counted: boolean }) | null; dealDetails?: DealDetails; touch: Omit<Touch, "visitorId"> | null; }
 export interface Range { from: string; to: string; model: Model; }
 export interface Coverage { limited: boolean; inspected: number; limit: number; }
-export interface Totals { outcomes: number; conversions: number; stageChanges: number; otherActivities: number; calls: number; missedCalls: number; forms: number; bookings: number; qualifiedOutcomes: number; payments: number; unknownValuePayments: number; revenueByCurrency: Record<string, number>; }
-export interface Report extends Range { version: number; totals: Totals; linkedOutcomes: number; unlinkedOutcomes: number; linkedConversions: number; unlinkedConversions: number; campaignConflictActivities: number; partialHistories: number; statuses: Record<string, number>; evidenceCounts: Record<string, number>; medianHoursToPayment: number | null; paymentLagSampleSize: number; groups: Array<Totals & { source: string; campaign: string; campaignIds: Record<string, string>; campaignConflict: boolean; groupId: string }>; coverage: Coverage; explanation: string; }
+export interface Totals { outcomes: number; conversions: number; stageChanges: number; otherActivities: number; calls: number; missedCalls: number; forms: number; bookings: number; qualifiedOutcomes: number; payments: number; unknownValuePayments: number; revenueByCurrency: Record<string, number>; deals: number; unknownValueDeals: number; dealValueByCurrency: Record<string, number>; }
+export interface Report extends Range { version: number; totals: Totals; linkedOutcomes: number; unlinkedOutcomes: number; linkedConversions: number; unlinkedConversions: number; campaignConflictActivities: number; partialHistories: number; statuses: Record<string, number>; evidenceCounts: Record<string, number>; medianHoursToPayment: number | null; paymentLagSampleSize: number; groups: Array<Totals & { source: string; campaign: string; campaignIds: Record<string, string>; campaignConflict: boolean; groupId: string }>; activities: ReportActivity[]; coverage: Coverage; explanation: string; }
 export interface Telemetry { lastPageviewAt: string | null; taggedPageviews: number; checkedAt: string; }
 export interface Doctor { checks: Array<{ id: string; status: "pass" | "action" | "unknown"; title: string; detail: string; action: string }>; checkedAt: string; status: string; explanation: string; }
 export function object(value: unknown, label: string): Record<string, unknown>;
@@ -24,6 +27,7 @@ export function normalizeCall(value: unknown): Outcome;
 export function safePage(value: unknown): { url: string; origin: string; parameters: Record<string, string> } | null;
 export function buildTouches(observations: Array<{ url: string; referrer: string | null; occurredAt: string; visitorId: string | null }>, cutoffAt: string): Touches;
 export function buildReport(rows: ReportRow[], range: Range, coverage: Coverage): Report;
+export function isConversion(row: ReportRow): boolean;
 export function trackingDoctor(report: Report, telemetry: Telemetry): Doctor;
 export function formatMoney(amount: number, currency: string): string;
 export function normalizeUtmParameters(parameters: Record<string, string>): Record<string, string>;
@@ -74,3 +78,5 @@ export interface PersonResolution { status: "linked" | "unlinked" | "ambiguous";
 export interface PersonSummary extends PersonReference { activities: number; occurredAt: string; status: string; touches: Touches | null; }
 export function resolvePersonSessions(personId: string | null, claims: PersonClaim[], cutoffAt: string): PersonResolution;
 export function summarizePeople(rows: Array<{ occurredAt: string | null; attribution?: { status: string; touches: Touches | null; person?: PersonReference } }>): PersonSummary[];
+
+export * from "./browser-continuity.mjs";

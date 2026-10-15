@@ -119,3 +119,7 @@ The kit accepts at most 64 KiB per request. `visitorSessionId` must be a valid U
 # Person identity links
 
 `POST /v1/identities/hubspot` requires the write token and an already imported, verified form enquiry. Its body is `{ "source": "hubspot_main", "externalId": "enquiry-001", "accountId": "123", "contactId": "101" }`. It returns a stable site-owned `personId` and `duplicate` flag. It does not create a HubSpot contact or grant CRM access. Use one outcome source per portal. Read the full [identity evidence and correction contract](people.md) before connecting an adapter. `/v1/report` includes up to 100 `people` snapshots alongside the aggregate `report`.
+
+## Browser matching evidence
+
+GET /v1/continuity uses the read token and the same from/to/model range as /v1/report. The report also includes continuity. Results contain evaluation mode, sample counts, candidate session references and matched/changed/unavailable component names, never stored signatures. Scores are rule points, not probabilities. The hosted attribution report includes the same evidence; it uses the hosted authentication wrapper. See [browser continuity](browser-continuity.md).

@@ -1,5 +1,18 @@
 import { KitError } from "./validation.mjs";
 import { normalizeUtmParameters, campaignIdEvidence } from "./utm.mjs";
+import { safePage } from "./tracking.mjs";
+import { isClickIdParameter, safeAttributionParameter } from "./parameters.mjs";
+function reportTouch(touch) {
+  if (!touch) return null;
+  const page = safePage(touch.url);
+  if (!page) return null;
+  const url = new URL(page.url);
+  for (const key of [...url.searchParams.keys()]) if (isClickIdParameter(key)) url.searchParams.delete(key);
+  const parameters = Object.fromEntries(Object.entries(touch.parameters ?? {})
+    .filter(([key, value]) => !isClickIdParameter(key) && safeAttributionParameter(key, value)));
+  return { url: url.href, referrer: safePage(touch.referrer)?.origin ?? null, occurredAt: touch.occurredAt,
+    parameters, sourceLabel: touch.sourceLabel };
+}
 // Report-only classification preserves the original saved touch and traffic labels.
 export function campaignEvidence(touch) {
   const p = normalizeUtmParameters(touch?.parameters ?? {});
@@ -18,11 +31,18 @@ export function campaignEvidence(touch) {
     : touch.sourceLabel;
   return { source, campaign, campaignIds, campaignConflict, groupId: JSON.stringify([source, campaign, campaignIds]) };
 }
-function isConversion(event) {
+export function isConversion(event) {
   return ["form", "call", "booking", "payment"].includes(event.eventType) && ["received", "completed"].includes(event.outcome);
 }
 function emptyTotals() {
-  return { outcomes: 0, conversions: 0, stageChanges: 0, otherActivities: 0, calls: 0, missedCalls: 0, forms: 0, bookings: 0, qualifiedOutcomes: 0, payments: 0, unknownValuePayments: 0, revenueByCurrency: {} };
+  return { outcomes: 0, conversions: 0, stageChanges: 0, otherActivities: 0, calls: 0, missedCalls: 0, forms: 0, bookings: 0, qualifiedOutcomes: 0, payments: 0, unknownValuePayments: 0, revenueByCurrency: {}, deals: 0, unknownValueDeals: 0, dealValueByCurrency: {} };
+}
+function addDealValue(totals, value) {
+  totals.deals++;
+  if (value.amountMinor == null || value.currency == null) { totals.unknownValueDeals++; return; }
+  const sum = (totals.dealValueByCurrency[value.currency] ?? 0) + value.amountMinor;
+  if (!Number.isSafeInteger(sum)) throw new KitError("TOTAL_OVERFLOW", "Deal value total exceeds the safe integer range.", 422);
+  totals.dealValueByCurrency[value.currency] = sum;
 }
 function addOutcome(totals, event) {
   totals.outcomes++;
@@ -58,8 +78,20 @@ export function buildReport(rows, range, coverage) {
   let campaignConflictActivities = 0;
   let partialHistories = 0;
   const lags = [];
-  for (const row of latest.values()) {
-    if (row.deleted || !row.occurredAt || Date.parse(row.occurredAt) < Date.parse(range.from) || Date.parse(row.occurredAt) >= Date.parse(range.to)) continue;
+  const activities = [];
+  const selected = [...latest.values()].filter(row => !row.deleted && row.occurredAt &&
+    Date.parse(row.occurredAt) >= Date.parse(range.from) && Date.parse(row.occurredAt) < Date.parse(range.to));
+  // Assign each deal to its latest stage in the period, including that stage's
+  // source. A deal moving through several stages or campaigns is counted once.
+  const deals = new Map();
+  for (const row of selected) {
+    if (!row.dealValue || row.eventType !== "stage_change") continue;
+    const key = JSON.stringify([row.source, row.dealValue.id]);
+    const previous = deals.get(key);
+    if (!previous || Date.parse(row.occurredAt) > Date.parse(previous.occurredAt) ||
+      (Date.parse(row.occurredAt) === Date.parse(previous.occurredAt) && row.externalId > previous.externalId)) deals.set(key, row);
+  }
+  for (const row of selected) {
     addOutcome(totals, row);
     const attribution = row.attribution;
     const status = attribution?.status ?? "unlinked";
@@ -76,6 +108,20 @@ export function buildReport(rows, range, coverage) {
     const key = campaign.groupId;
     if (!groups.has(key)) groups.set(key, { ...campaign, ...emptyTotals() });
     addOutcome(groups.get(key), row);
+    const countedDeal = row.dealValue && deals.get(JSON.stringify([row.source, row.dealValue.id])) === row;
+    if (countedDeal) { addDealValue(totals, row.dealValue); addDealValue(groups.get(key), row.dealValue); }
+    // Explicit detail projection excludes raw CRM data, matching keys and visitor IDs.
+    activities.push({ id: JSON.stringify([row.source, row.externalId]), groupId: key,
+      source: row.source, externalId: row.externalId, eventType: row.eventType, occurredAt: row.occurredAt,
+      outcome: row.outcome, label: row.label || row.eventType.replaceAll("_", " "), detail: row.detail || "",
+      sourceUrl: row.sourceUrl || null, conversion: isConversion(row), linked: Boolean(touch),
+      personId: attribution?.person?.id ?? null,
+      status, evidence: attribution?.evidence ?? null, historyLimited: Boolean(touches?.historyLimited),
+      amountMinor: row.amountMinor ?? null, currency: row.currency ?? null,
+      dealValue: row.dealValue ? { ...row.dealValue, counted: Boolean(countedDeal) } : null,
+      ...(row.dealValue && row.dealDetails ? { dealDetails: { name: row.dealDetails.name,
+        contacts: row.dealDetails.contacts.map(contact => ({ name: contact.name, address: contact.address })) } } : {}),
+      touch: reportTouch(touch) });
     if (status === "linked" && touches?.firstTouch) {
       const describe = value => value ? { source: campaignEvidence(value).source, campaign: campaignEvidence(value).campaign,
         campaignIds: campaignEvidence(value).campaignIds, campaignConflict: campaignEvidence(value).campaignConflict } : null;
@@ -100,7 +146,8 @@ export function buildReport(rows, range, coverage) {
     journeys: [...journeys.values()].sort((a,b) => b.conversions - a.conversions || b.activities - a.activities).slice(0,100),
     journeysLimited: journeys.size > 100,
     groups: [...groups.values()].sort((a, b) => b.outcomes - a.outcomes || a.source.localeCompare(b.source) || a.campaign.localeCompare(b.campaign)),
-    coverage, explanation: "All saved activities in the selected period by original event time. Conversions are received or completed forms, calls, bookings and payments; they are event counts, not unique customers or ad-platform conversions. Stage changes and unsuccessful or other activity are separate. Revenue is completed payments, grouped by currency. Campaign IDs describe the selected touch, not a verified campaign name; conflicting IDs are retained without choosing a winner. Google referrals have no saved paid evidence and are not proof of organic traffic. Attribution describes evidence, not causation. Separate source systems are not automatically deduplicated. This is not an ad-platform delivery report." };
+    activities: activities.sort((a, b) => Date.parse(b.occurredAt) - Date.parse(a.occurredAt) || a.id.localeCompare(b.id)),
+    coverage, explanation: "All saved activities in the selected period by original event time. Conversions are received or completed forms, calls, bookings and payments; they are event counts, not unique customers or ad-platform conversions. Stage changes and unsuccessful or other activity are separate. Revenue is completed payments, grouped by currency. Deal value counts each deal once using its amount at the latest stage change in the period; it includes open, won and lost deals and is not collected revenue. Campaign IDs describe the selected touch, not a verified campaign name; conflicting IDs are retained without choosing a winner. Google referrals have no saved paid evidence and are not proof of organic traffic. Attribution describes evidence, not causation. Separate source systems are not automatically deduplicated. This is not an ad-platform delivery report." };
 }
 export function trackingDoctor(report, telemetry) {
   const checks = [];

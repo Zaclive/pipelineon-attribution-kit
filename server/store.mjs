@@ -1,3 +1,4 @@
+import { openContinuityStore } from "./continuity-store.mjs";
 import { DatabaseSync } from "node:sqlite";
 import { createHash, randomUUID } from "node:crypto";
 import { KitError, safePage, sessionReference, timestamp, validateOutcome, buildTouches, buildReport, summarizePeople, trackingDoctor } from "../core/index.mjs";
@@ -39,6 +40,7 @@ export function openStore(filename, siteId, metaDestination, callrailConfig, goo
     try { return openPersonStore(db, transaction, audit); }
     catch (error) { db.close(); throw error; }
   })();
+  const continuity = openContinuityStore(db,audit);
   function collect(input, origin, now) {
     if (input.siteId !== siteId) throw new KitError("NOT_FOUND", "Website not available.", 404);
     const visitor = sessionReference(input.visitorId);
@@ -62,6 +64,7 @@ export function openStore(filename, siteId, metaDestination, callrailConfig, goo
         db.prepare("INSERT INTO sessions(id,visitor_id,created_at) VALUES(?,?,?)").run(session.id, visitor, now);
       }
       db.prepare("INSERT INTO visits VALUES(?,?,?,?,?,?)").run(id, session.id, at, page.url, referrer, digest);
+      if (input.gpc !== true) continuity.capture(session.id,input.browserSignature,now);
       audit("visit_collected", id, now);
       return { visitorSessionId: session.id, duplicate: false };
     });
@@ -133,7 +136,7 @@ export function openStore(filename, siteId, metaDestination, callrailConfig, goo
     const result = buildReport(attributed, range, coverage);
     const pages = db.prepare("SELECT url,occurred_at FROM visits WHERE occurred_at>=? AND occurred_at<? ORDER BY occurred_at DESC LIMIT 1000").all(range.from, range.to);
     const telemetry = { lastPageviewAt: pages[0]?.occurred_at ?? null, taggedPageviews: pages.filter(row => Object.keys(safePage(row.url)?.parameters ?? {}).length > 0).length, checkedAt: now };
-    return { siteId, report: result, people: summarizePeople(attributed), doctor: trackingDoctor(result, telemetry), telemetry };
+    return { siteId, continuity:continuity.report(range,now), report: result, people: summarizePeople(attributed), doctor: trackingDoctor(result, telemetry), telemetry };
   }
   function recovery(range) {
     // Browser-level opportunities only. This does not identify people or establish outreach eligibility.
@@ -153,5 +156,5 @@ export function openStore(filename, siteId, metaDestination, callrailConfig, goo
       consistency: "Pause imports during a full export to keep pagination consistent." };
   }
   const callrail = openCallrailStore(db, callrailConfig, transaction, audit, importOutcome);
-  return { collect, importOutcome, report, recovery, exportOutcomes, people, meta, callrail, googleAds, close: () => db.close() };
+  return { collect, importOutcome, continuity, report, recovery, exportOutcomes, people, meta, callrail, googleAds, close: () => db.close() };
 }
