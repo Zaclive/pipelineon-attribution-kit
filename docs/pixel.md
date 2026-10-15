@@ -1,6 +1,6 @@
 # Install the pixel and define conversion events
 
-The pixel observes visits and returns a reference to carry into the CRM. Business outcomes arrive through your server or CRM adapter. The v0.3 pixel has no browser `track("Purchase")` or arbitrary custom-event API.
+The pixel observes visits and returns a reference to carry into the CRM. Business outcomes arrive through your server or CRM adapter. The pixel has no browser `track("Purchase")` or arbitrary custom-event API.
 
 Installing through Google Tag Manager? Use [gtm guide](gtm.md). An optional Worker endpoint has its own [recipe](hosting.md#put-the-pixel-behind-an-optional-cloudflare-worker).
 

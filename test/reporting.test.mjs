@@ -54,6 +54,20 @@ test("paid Google, Google referral, organic tags and unclassified Google remain 
   ];
   for (const [p, referrer, source] of cases) assert.equal(buildReport([linked(p, referrer)], range, coverage).groups[0].source, source);
 });
+
+test("recovery provenance overlaps campaign attribution and only exposes allowlisted handoff timestamps", () => {
+  const row = { ...linked({ utm_source: "facebook", utm_campaign: "fall" }, null), externalId: "deal", eventType: "stage_change",
+    dealValue: { id: "deal1", amountMinor: 10000, currency: "USD" } };
+  const plain = buildReport([row], range, coverage);
+  row.pipelineOnRecovery = { recoveredAt: "2026-10-11T10:00:00Z", deliveredAt: "2026-10-11T11:00:00Z", leadId: "private-lead", raw: { email: "private@example.com" } };
+  const tagged = buildReport([row], range, coverage);
+  assert.deepEqual(tagged.totals, plain.totals);
+  assert.deepEqual(tagged.groups, plain.groups);
+  assert.equal(tagged.groups[0].source, "facebook");
+  assert.deepEqual(tagged.activities[0].pipelineOnRecovery, { recoveredAt: "2026-10-11T10:00:00Z", deliveredAt: "2026-10-11T11:00:00Z" });
+  assert.equal(JSON.stringify(tagged).includes("private-lead"), false);
+  assert.equal(JSON.stringify(tagged).includes("private@example.com"), false);
+});
 test("model selection never combines IDs across touches or credits a visit after the outcome", () => {
   const row = linked({}, null);
   row.attribution.touches = buildTouches([

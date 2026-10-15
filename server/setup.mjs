@@ -30,7 +30,9 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     const result=buildSetup(process.argv.slice(2));
     writeFileSync(".env",result.env,{flag:"wx",mode:0o600});
     console.log("Created private .env; no credentials were printed. Existing files are never overwritten.\n"+
-      "Next: provision persistent hosting and HTTPS, start with pnpm start or Docker, then check /health.\n"+
+      (new URL(result.url).protocol === "http:" ? "Local demo: HTTP loopback is supported; public deployment needs persistent hosting and HTTPS.\n" : "Next: configure persistent hosting and HTTPS.\n")+
+      "Start from this directory with node --env-file-if-exists=.env server/start.mjs or docker compose up --build -d, then check /health.\n"+
+      "Open "+result.url+"/ and sign in with KIT_READ_TOKEN from your private .env (without surrounding quotes). Never use KIT_WRITE_TOKEN in the browser.\n"+
       "Install this single script on the website:\n"+result.snippet+"\n"+
       "Connect consent: window.OpenAttribution.sites["+JSON.stringify(result.siteId)+"].consent(true) only after tracking consent. Use consent(false) on withdrawal.\n"+
       "Follow docs/setup.md for CRM mapping and end-to-end verification. Advertising delivery is disabled.");

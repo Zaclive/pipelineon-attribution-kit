@@ -23,8 +23,12 @@ test("setup command writes a usable private env and refuses to replace it",()=>{
   const args=[fileURLToPath(new URL("../server/setup.mjs",import.meta.url)),"--site","https://example.com","--url","http://localhost:4310","--name","Example site"];
   const first=spawnSync(process.execPath,args,{cwd:directory,encoding:"utf8"});
   assert.equal(first.status,0,first.stderr);assert.match(first.stdout,/<script defer/);
+  assert.match(first.stdout,/Local demo: HTTP loopback is supported/);
+  assert.match(first.stdout,/node --env-file-if-exists=\.env server\/start\.mjs/);
+  assert.match(first.stdout,/Open http:\/\/localhost:4310\/ and sign in with KIT_READ_TOKEN/);
   const env=readFileSync(join(directory,".env"),"utf8");
   const token=/KIT_WRITE_TOKEN="([^"]+)"/.exec(env)[1];assert.equal(first.stdout.includes(token),false);
+  assert.equal(first.stdout.includes(/KIT_READ_TOKEN="([^"]+)"/.exec(env)[1]),false);
   const parse=spawnSync(process.execPath,["--env-file=.env","-e","process.stdout.write(process.env.KIT_SITE_NAME)"],{cwd:directory,encoding:"utf8"});
   assert.equal(parse.status,0);assert.equal(parse.stdout,"Example site");
   assert.notEqual(spawnSync(process.execPath,args,{cwd:directory,encoding:"utf8"}).status,0);
