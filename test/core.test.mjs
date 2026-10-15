@@ -24,6 +24,24 @@ test("privacy allowlist removes credentials, fragments and personal values", () 
   assert.equal(safePage("https://user:pass@example.com/"), null);
   assert.equal(safePage("javascript:alert(1)"), null);
 });
+test("hash routes retain safe pages and campaign fields while dropping route secrets", () => {
+  const page = safePage("https://example.com/app?utm_source=google#!/reset/private-reset-token?utm_source=facebook&utm_campaign=roof&email=private%40example.com#details");
+  assert.equal(page.url, "https://example.com/app?utm_source=google#!/reset/[redacted]?utm_source=facebook&utm_campaign=roof");
+  assert.deepEqual(page.parameters, {utm_source:"google", utm_campaign:"roof"});
+  assert.equal(safePage("https://example.com/app#/account/private%2540example.com?token=secret").url,"https://example.com/app#/account/[redacted]");
+  for (const hash of ["#reviews","#access_token=secret","#//evil.test/quote","#/\\evil.test/quote"]) {
+    assert.equal(safePage("https://example.com/app"+hash).url,"https://example.com/app");
+  }
+});
+test("campaigns inside hash routes participate in outcome touch attribution", () => {
+  const touches = buildTouches([
+    {id:"entry",visitorId:"a",url:"https://example.com/app#/services?utm_source=google&utm_campaign=roof",occurredAt:at("10","10"),referrer:null},
+    {id:"route",visitorId:"a",url:"https://example.com/app#/quote",occurredAt:"2026-10-10T10:02:00.000Z",referrer:"https://example.com/app#/services"},
+  ], at("10","11"));
+  assert.equal(touches.timeline.length,1);
+  assert.equal(touches.lastNonDirectTouch.sourceLabel,"google");
+  assert.equal(touches.firstTouch.parameters.utm_campaign,"roof");
+});
 test("first, last and non-direct use original time, ignore later visits, and retain internal source", () => {
   const touches = buildTouches(visits().reverse(), at("12", "14"));
   assert.equal(touches.firstTouch.sourceLabel, "google");

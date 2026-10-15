@@ -1,6 +1,7 @@
 import { timestamp } from "./primitives.mjs";
 import { safeAttributionParameter } from "./parameters.mjs";
 import { normalizeUtmParameters } from "./utm.mjs";
+import { hashRoute, safeHashPath } from "./hash-route.mjs";
 const PRIVATE_VALUE = /[\x00-\x1f\x7f<>@]|(?:bearer\s|password|access_token|api_key|secret=)/i;
 export function safePage(value) {
   if (typeof value !== "string" || value.length > 8192) return null;
@@ -20,6 +21,18 @@ export function safePage(value) {
       return PRIVATE_VALUE.test(decoded) || /^\+?\d[\d ().-]{8,}$/.test(decoded) ? "redacted" : part;
     }).join("/").slice(0, 1000);
     for (const [key, val] of Object.entries(parameters)) clean.searchParams.set(key, val);
+    const route = hashRoute(url.hash);
+    if (route) {
+      route.url.pathname = safeHashPath(route.url.pathname);
+      const safeRoute = safePage(route.url.href);
+      if (safeRoute) {
+        const parsedRoute = new URL(safeRoute.url);
+        clean.hash = `${route.prefix.slice(1)}${parsedRoute.pathname}${parsedRoute.search}`;
+        for (const [key, value] of Object.entries(safeRoute.parameters)) {
+          if (!Object.hasOwn(parameters, key)) parameters[key] = value;
+        }
+      }
+    }
     return { url: clean.href, origin: clean.origin, parameters };
   } catch { return null; }
 }
