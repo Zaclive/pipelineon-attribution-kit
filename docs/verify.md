@@ -22,7 +22,7 @@ Record the deployed version, website/source account, test enquiry/job/payment ID
 | Isolation | Another site's reference never creates a cross-client link. Credentials remain scoped. |
 | Restart | Facts, queued work and receipts survive restart; replay is not a second payment. |
 
-For the kit, query `/v1/report?from=<ISO>&to=<ISO>&model=first_touch`, then `last_touch` and `last_non_direct` with a read token. Ranges are start-inclusive/end-exclusive, at most 31 days. Inspect disclosed history limits. `/v1/export` provides stored outcome facts; page through all results when needed.
+For the kit, query `/v1/report?from=<ISO>&to=<ISO>&model=first_touch`, then `last_touch` and `last_non_direct` with a read token. Ranges are start-inclusive/end-exclusive, with no fixed calendar-length cap; evidence row budgets still apply. Inspect disclosed history limits. `/v1/export` provides stored outcome facts; page through all results when needed.
 
 PipelineOn uses its own attribution UI/API and import receipts. Follow the wrapper/scopes in the [API reference](api.md#send-to-the-correct-api). Do not assume its response shape is the kit's.
 
@@ -77,3 +77,7 @@ Keep the receipts and monitor queue age, unlinked outcomes and permanent failure
 ## Google Ads destination
 
 Follow [Google Ads setup](google-ads.md). Check account and distinct action IDs, original event time, permitted matching data and both consent choices. Validation is not a live conversion; a submitted request is not completed processing. Follow the same request through `SUCCESS` or review, then check account matching diagnostics separately. Do not replay validated history merely to switch to live.
+
+## Fingerprint evaluation
+
+On an isolated QA site/database, consent, capture a browser, clear only its tracking storage and return. Inspect a possible-return explanation while confirming distinct session references and unchanged verified person links/revenue. Test identical/similar devices producing ambiguity, unavailable WebGL, restart, GPC and withdrawal during hashing. Do not claim accuracy or uplift from these controlled tests. Full protocol: [browser continuity](browser-continuity.md).

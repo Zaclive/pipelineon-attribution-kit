@@ -34,7 +34,11 @@ flowchart LR
 | 5. Add advertising | [Meta](meta.md) or [Google Ads](google-ads.md) | Meta has a Test Events entry; Google has a validation receipt. Verify live processing separately. |
 | 6. Verify and launch | [End-to-end checks](verify.md) | Replay, restart, consent and real mobile/desktop forms pass. |
 
-For an AI-assisted installation, fill the private [setup brief](../examples/setup-brief.template.json) and give your assistant [these instructions](ai-setup.md).
+For agent-led installation, start with [the agent task](ai-setup.md); it asks for unresolved choices and can create a private setup brief. You do not need to fill a long worksheet before choosing a route.
+
+## Check browser matching
+
+The same consented script includes [fingerprint evaluation](browser-continuity.md). Confirm candidate reasons in the evidence report without merging browser or person histories. This is separate from proving the visit-to-outcome link.
 
 ## Decide before connecting
 

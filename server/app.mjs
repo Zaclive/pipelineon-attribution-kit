@@ -113,7 +113,9 @@ export function createKitServer(config) {
           response.setHeader("Access-Control-Allow-Methods", "POST"); response.setHeader("Access-Control-Allow-Headers", "Content-Type"); response.writeHead(204); response.end(); return;
         }
         if (request.method !== "POST") throw new KitError("METHOD_NOT_ALLOWED", "Use POST.", 405);
-        send(store.collect(await body(request), origin, now), 200); return;
+        const input = await body(request);
+        if (request.headers["sec-gpc"] === "1" || input.gpc === true) { send({ collected:false,reason:"gpc" },200); return; }
+        send(store.collect(input, origin, now), 200); return;
       }
       if (origin && origin !== publicOrigin) throw new KitError("FORBIDDEN", "Origin is not allowed.", 403);
       if (request.method === "GET" && STATIC[url.pathname]) {
@@ -160,9 +162,10 @@ export function createKitServer(config) {
         if (typeof input.id !== "string" || Object.keys(input).some(key => key !== "id")) throw new KitError("INVALID_INPUT", "Supply a delivery id.", 400);
         send(store.meta.retry(input.id, now), 200); return;
       }
-      if (["/v1/report", "/v1/doctor", "/v1/recovery"].includes(url.pathname) && request.method === "GET") {
+      if (["/v1/report", "/v1/doctor", "/v1/recovery", "/v1/continuity"].includes(url.pathname) && request.method === "GET") {
         const range = reportRange(Object.fromEntries(url.searchParams), now);
-        if (url.pathname === "/v1/recovery") send(store.recovery(range), 200);
+        if (url.pathname === "/v1/continuity") send(store.continuity.report(range,now),200);
+        else if (url.pathname === "/v1/recovery") send(store.recovery(range), 200);
         else { const result = store.report(range, now); send(url.pathname === "/v1/doctor" ? result.doctor : result, 200); }
         return;
       }

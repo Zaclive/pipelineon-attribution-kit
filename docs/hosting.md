@@ -4,7 +4,7 @@ Choose PipelineOn hosting, or run one kit instance per website with persistent s
 
 ## Choose hosting and understand free options
 
-Provider allowances below were checked on 14 October 2026; verify current eligibility and limits before provisioning. MIT removes the software licence fee, not hosting or CRM/API charges.
+Provider allowances below were checked on 15 October 2026; verify current eligibility and limits before provisioning. MIT removes the software licence fee, not hosting or CRM/API charges.
 
 | Option | What it runs | Cost and practical limit |
 | --- | --- | --- |
@@ -28,7 +28,7 @@ Hosted users configure their website and integrations in PipelineOn.
 
 ## Run the MIT kit on a persistent server
 
-Use a reviewed public-repository commit and its matching documentation. Clone with `git clone https://github.com/Zaclive/pipelineon-attribution-kit.git`, then `cd pipelineon-attribution-kit`. Tagged release downloads contain the files available at that tag. Record the version. The v0.3 runtime is Node.js 24.14.x; Docker pins it. Run commands from the kit root. Bash uses `cp`; on PowerShell use `Copy-Item`.
+Use a reviewed public-repository commit and its matching documentation. Clone with `git clone https://github.com/Zaclive/pipelineon-attribution-kit.git`, then `cd pipelineon-attribution-kit`. Tagged release downloads contain the files available at that tag. Record the version. The v0.4 runtime is Node.js 24.14.x; Docker pins it. Run commands from the kit root. Bash uses `cp`; on PowerShell use `Copy-Item`.
 
 ```sh
 cp .env.example .env
@@ -46,7 +46,7 @@ Configure the private file:
 | `KIT_WRITE_TOKEN` | Different random secret for trusted importers. |
 | `KIT_META_MODE`, `KIT_GOOGLE_MODE` | Both `disabled` initially. Leave optional provider fields empty until configuring them. |
 
-Generate each token locally with `node -e "console.log(require('node:crypto').randomBytes(32).toString('base64url'))"`. Run twice and save privately. Both tokens must be different and at least 32 characters. Restrict `.env` access; never paste secrets into documentation or commit them.
+You can generate the initial .env and single-script instructions with pnpm run setup --site https://www.example.com --url https://attribution.example.com --name "Your business". It refuses to overwrite .env and keeps generated credentials out of output. Add additional exact origins if the website uses both www and its apex. For manual configuration, generate each token locally with `node -e "console.log(require('node:crypto').randomBytes(32).toString('base64url'))"`. Run twice and save privately. Both tokens must be different and at least 32 characters. Restrict `.env` access; never paste secrets into documentation or commit them.
 
 ```sh
 docker compose up --build -d
@@ -123,3 +123,9 @@ For upgrades, retain the database/private configuration and review release chang
 - **Worker with CallRail:** only `pixel.js` and `/v1/collect` use the example proxy. Load `callrail.js` and configure webhooks on the original kit origin; private imports remain there too.
 
 For a custom CRM Worker, use [CRM middleware](crm.md#optional-cloudflare-crm-relay). Run [verification](verify.md) before collecting live outcomes.
+
+## Database and CRM costs
+
+SQLite is included with no database licence fee. You pay for its persistent disk as part of hosting. Cloudflare D1 and hosted PostgreSQL are alternatives only after writing and testing a storage adapter; the current kit has no database-provider toggle. Reuse an existing CRM where possible. A CRM subscription does not host this kit or automatically supply payment events.
+
+For a regional price example checked 15 October 2026, [Pipedrive Lite](https://www.pipedrive.com/en/pricing) displayed AU$19 per seat/month billed annually (AU$228 per seat/year), with a 14-day trial. This is not a universal $20 price or a requirement to buy Pipedrive. Verify local currency, billing term, API permissions and any workflow/adapter charges before choosing a plan.

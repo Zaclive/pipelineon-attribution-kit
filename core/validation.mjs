@@ -51,8 +51,8 @@ export function reportRange(raw, now) {
   const input = object(raw, "Report range");
   const from = timestamp(input.from, "from");
   const to = timestamp(input.to, "to");
-  if (from >= to || Date.parse(to) - Date.parse(from) > 31 * 86400000 || Date.parse(to) > Date.parse(now) + 300000)
-    throw new KitError("INVALID_RANGE", "Choose a past range of at most 31 days (end exclusive).", 400);
+  if (from >= to || Date.parse(to) > Date.parse(now) + 300000)
+    throw new KitError("INVALID_RANGE", "Choose a past range with the start before the end (end exclusive).", 400);
   const model = input.model ?? "last_non_direct";
   if (!MODELS.includes(model)) throw new KitError("INVALID_INPUT", "Invalid attribution model.", 400);
   return { from, to, model };

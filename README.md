@@ -1,101 +1,75 @@
 # PipelineOn Open Attribution
 
-An MIT-licensed kit that connects consented website visits to CRM outcomes and revenue, with optional server-side advertising delivery. Run it on your server or use [PipelineOn](https://app.pipelineon.com).
+Connect consented website visits to enquiries, calls, jobs and payments. Includes browser fingerprint evaluation, matching evidence, attribution reports and optional Meta/Google conversion delivery. MIT licensed.
 
-**[Start the setup](docs/setup.md)** or give your coding assistant [the installation task](docs/ai-setup.md).
+## Set this up with your agent
 
-## Choose the instructions you need
+Give a coding agent this repository URL and say:
+
+> Read README.md and docs/ai-setup.md. Explain the hosting, database, CRM and cost choices, recommend a route, and ask me only for decisions or access you still need. Then set it up, install the single pixel, and verify one visit through a real business outcome. Keep advertising disabled until its separate test passes.
+
+**Choose this first:** [PipelineOn](https://app.pipelineon.com) operates the service for you and is our recommendation for the least maintenance. Self-host this kit if you want control of the code, data and infrastructure. The agent should explain both routes before provisioning anything.
+
+## What you need
+
+| | PipelineOn | Self-hosted kit |
+| --- | --- | --- |
+| Website | Permission to add one script and connect tracking consent; WordPress and other hosts are supported | Same |
+| Attribution server | Included in your PipelineOn service | One always-on Node.js 24.14.x process, or the included Docker image |
+| Database | Operated by PipelineOn | Included SQLite database on a persistent disk; one instance per website |
+| Public endpoint | Copy your website snippet from PipelineOn | An HTTPS server hostname; a provider hostname is enough, custom DNS is optional |
+| Business outcomes | Supported connector or a trusted source adapter | Your existing backend, CRM API/webhook, workflow or CSV importer supplies outcomes |
+| Operations | Managed service | You maintain uptime, backups, upgrades, secrets and the source adapter |
+
+A CRM is a source of business facts, not the attribution server. Reuse your CRM; buying Pipedrive or another CRM is optional. Contacts or won deals alone do not establish completed payments. No paid identity service is required for fingerprint evaluation.
+
+## Hosting and cost choices
+
+Prices/allowances checked 15 October 2026. Provider bills, currency, eligibility and usage vary. [Detailed choices and sources](docs/hosting.md).
+
+| Route | Starting cost | Setup and maintenance |
+| --- | --- | --- |
+| **PipelineOn: recommended managed route** | Current PipelineOn plan; confirm the offer in the app | Lowest infrastructure maintenance; install its snippet and connect your data |
+| **Railway: simple self-hosting** | Hobby starts at USD 5/month including USD 5 resource usage; overages extra | Deploy Docker, attach a persistent volume and configure backups |
+| **Existing server/VPS with Docker** | No incremental server subscription if capacity is already paid for | More control; you handle HTTPS, uptime, updates and backups |
+| **Railway Free or eligible free VM** | Limited free allowances; not guaranteed free production | Confirm capacity and always-on availability; more limits or maintenance |
+| **Cloudflare Worker: optional add-on** | Free allowance; paid Workers starts at USD 5/month | Can proxy this pixel or run a custom adapter. The complete kit still needs its Node/SQLite server |
+
+SQLite needs no separate database subscription. D1 and hosted PostgreSQL are different architectures and require a storage port; they are not configuration switches in this release. Never replace the persistent disk with ephemeral storage. See [hosting](docs/hosting.md).
+
+## Self-host: configure, start, install
+
+After choosing and authorizing a server, clone this repository or extract a tagged release. The following command creates a private .env with separate random tokens and prints your one-script snippet. It does not create hosting or overwrite existing configuration.
+
+```sh
+pnpm run setup --site https://www.example.com --url https://your-collector.example.com --name "Your business"
+docker compose up --build -d
+```
+
+Docker publishes on localhost:4310 for an HTTPS reverse proxy. A managed container host uses its public HTTPS endpoint, HOST=0.0.0.0 and a persistent volume. If using Node directly, run pnpm start with Node.js 24.14.x. No package dependencies need installation. Follow the selected [hosting recipe](docs/hosting.md) before exposing it.
+
+Install the generated script on the website. Wire consent once through window.OpenAttribution.sites[SITE_ID].consent(true); use consent(false) on withdrawal. Tracking is off by default and respects Global Privacy Control. Your site's domain does not have to use Cloudflare. [Pixel instructions](docs/pixel.md).
+
+Then follow [the setup checklist](docs/setup.md): preserve the accepted visitorSessionId with an enquiry, import an authoritative outcome, inspect its attribution, restart and replay it. A running pixel is the start of setup, not its completion.
+
+## What is included, and where to go next
 
 | Task | Guide |
 | --- | --- |
-| Server, free options, Docker, Railway or pixel Worker | [Hosting](docs/hosting.md) |
-| Install the pixel and carry its reference into a form | [Pixel and events](docs/pixel.md) |
-| Use Google Tag Manager | [GTM](docs/gtm.md) |
-| Connect a CRM, API, CSV or offline activity | [CRM mapping and middleware](docs/crm.md) |
-| Find a CRM's access route | [CRM access](docs/crm-access.md) |
-| Keep original and returning campaigns in HubSpot | [HubSpot attribution mapping](docs/hubspot-attribution.md) |
-| Keep our own person ID, CRM link and campaign history | [People and verified browser links](docs/people.md) |
-| Connect website-pool calls | [CallRail](docs/callrail.md) |
-| Name confirmed business milestones | [Business events](docs/events.md) |
-| Configure Google Ads delivery | [Google Ads](docs/google-ads.md) |
-| Configure Facebook delivery and deduplication | [Meta](docs/meta.md) |
-| Request formats, reports and read-only assistant tools | [API reference](docs/api.md) |
-| Prove source, revenue and delivery before launch | [Verification](docs/verify.md) |
+| Agent instructions and setup decisions | [Agent setup](docs/ai-setup.md) |
+| Hosting, free plans, persistent storage and backups | [Hosting](docs/hosting.md) |
+| Pixel, consent, SPA/hash routes and form references | [Pixel](docs/pixel.md) |
+| Browser fingerprints and possible-return evidence | [Browser continuity](docs/browser-continuity.md) |
+| CRM, API, CSV and offline outcome mapping | [CRM mapping](docs/crm.md) and [access options](docs/crm-access.md) |
+| Verified people and several browser histories | [People](docs/people.md) and [HubSpot mapping](docs/hubspot-attribution.md) |
+| Calls, qualification and payments | [CallRail](docs/callrail.md) and [business events](docs/events.md) |
+| Optional conversion feedback | [Meta](docs/meta.md) and [Google Ads](docs/google-ads.md) |
+| Reports, evidence and read-only MCP tools | [API](docs/api.md) |
+| Terminology and defensible claims | [Tracking jargon](docs/tracking-jargon.md) and [capabilities and limits](docs/capabilities.md) |
+| Prove the full installation | [Verification](docs/verify.md) |
 
-## What is in this repository
+## Boundaries
 
-```text
-docs/       Setup and reference guides
-examples/   Copyable payloads, templates and integration examples
-public/     Pixel, CallRail bridge and dashboard
-core/       Validation, attribution and provider mapping
-server/     HTTP API, SQLite storage and delivery workers
-test/       Automated regression tests
-```
+Fingerprints are possible browser connections, not verified people. This release evaluates candidates without merging histories, changing campaign credit or delivering inferred identities to advertising platforms. Source attribution is not proof an ad caused a sale; provider acceptance is not proof of ad matching or better ROI. The kit does not include universal CRM OAuth, anonymous-person identity data, automatic bidding or predictive LTV.
 
-Run one instance per website with Node.js 24.14.x and persistent SQLite storage. The included Docker configuration pins the runtime. The unchanged kit does not run as a Cloudflare Worker or stateless function. Use the documentation at your installed commit; check `package.json` before copying examples from another release.
-
-The kit does not automatically connect arbitrary CRMs, discover every competing conversion sender or identify anonymous visitors as people. Your connector supplies authoritative outcomes and permitted matching data. A server receipt alone does not prove ad attribution.
-
-## Licence and contributions
-
-[MIT](LICENSE). You can use, modify and host the kit commercially. Hosting and external provider accounts may have their own costs.
-
-Keep contributions synthetic: no credentials, personal/customer records, completed mapping worksheets or internal operating instructions. Copy templates into a private deployment repository. Run `pnpm test` from this directory before proposing executable changes.
-
-<details>
-<summary>Links from earlier versions of the README</summary>
-
-## Canonical events and advertising destinations
-
-Continue to [business events](docs/events.md) and [Google Ads](docs/google-ads.md).
-
-## Set up your website and CRM
-
-Continue to [Set up your website and CRM](docs/setup.md).
-
-## Connect your data, using the route you choose
-
-Continue to [Connect your data, using the route you choose](docs/crm.md#choose-the-connection-route).
-
-### What your connector must carry
-
-Continue to [What your connector must carry](docs/crm.md#map-the-contract-fields).
-
-### Check that your connection is complete
-
-Continue to [Check that your connection is complete](docs/verify.md).
-
-### Send eligible outcomes to Meta
-
-Continue to [Send eligible outcomes to Meta](docs/meta.md#send-eligible-outcomes-to-meta).
-
-### Deduplication, retries and corrections
-
-Continue to [Deduplication, retries and corrections](docs/meta.md#deduplication-retries-and-corrections).
-
-## Run locally
-
-Continue to [Run locally](docs/hosting.md#run-the-mit-kit-on-a-persistent-server).
-
-## Install the pixel
-
-Continue to [Install the pixel](docs/pixel.md#install-the-self-hosted-pixel).
-
-## Import outcomes
-
-Continue to [Import outcomes](docs/api.md#import-outcomes).
-
-## Calls: CallRail, Ringba or your own system
-
-Continue to [Calls: CallRail, Ringba or your own system](docs/api.md#calls-callrail-ringba-or-your-own-system).
-
-## Reports, tracking doctor and assistant tools
-
-Continue to [Reports, tracking doctor and assistant tools](docs/api.md#reports-tracking-doctor-and-assistant-tools).
-
-## PipelineOn-hosted equivalent
-
-Continue to [PipelineOn-hosted equivalent](docs/api.md#pipelineon-hosted-equivalent).
-
-</details>
+Keep docs and code at the same release. Directory map: docs for instructions, examples for templates, public for pixel/dashboard, core for contracts/matching, server for SQLite/API/queues, test for regression tests. Run pnpm test before contributing. Keep credentials, customer records and completed worksheets private. [MIT licence](LICENSE).

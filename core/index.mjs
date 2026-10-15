@@ -9,3 +9,5 @@ export * from "./form-link.mjs";
 export * from "./utm.mjs";
 export * from "./crm-attribution.mjs";
 export { resolvePersonSessions, summarizePeople } from "./person.mjs";
+
+export * from "./browser-continuity.mjs";
