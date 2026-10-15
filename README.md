@@ -50,6 +50,10 @@ Docker publishes on localhost:4310 for an HTTPS reverse proxy. A managed contain
 
 Install the generated script on the website. Wire consent once through window.OpenAttribution.sites[SITE_ID].consent(true); use consent(false) on withdrawal. Tracking is off by default and respects Global Privacy Control. Your site's domain does not have to use Cloudflare. [Pixel instructions](docs/pixel.md).
 
+Open your collector origin in a browser (for example, `https://your-collector.example.com/`). Sign in using `KIT_READ_TOKEN` from your private `.env` or hosting secrets, without its surrounding quotes. The write token belongs only on trusted servers. The dashboard begins empty until you collect a consented visit and import an outcome.
+
+For a free local trial, follow [the Node-only local recipe](docs/hosting.md#try-it-locally-with-node). It uses HTTP loopback and needs neither Docker nor a package manager. Local success does not provide public hosting or connect a real CRM.
+
 Then follow [the setup checklist](docs/setup.md): preserve the accepted visitorSessionId with an enquiry, import an authoritative outcome, inspect its attribution, restart and replay it. A running pixel is the start of setup, not its completion.
 
 ## What is included, and where to go next

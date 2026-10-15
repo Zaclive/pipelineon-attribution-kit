@@ -38,7 +38,7 @@ Complete a private copy of [the mapping worksheet](../examples/crm-mapping.templ
 
 ## Map the business meaning first
 
-| Evidence | Normalized fact | Meta mapping in v0.3 |
+| Evidence | Normalized fact | Meta mapping |
 | --- | --- | --- |
 | Saved enquiry | `form` / `received` | Eligible `Lead`. |
 | Confirmed appointment | `booking` / `completed` | Eligible `Schedule`. |
@@ -52,7 +52,7 @@ Complete a private copy of [the mapping worksheet](../examples/crm-mapping.templ
 
 Eligibility also requires an explicit Meta envelope, consent, matching data, a configured destination and acceptable event age. Changing a label never overrides the Meta event name.
 
-`qualified_lead`, `job_won`, `Purchase` and provider stage names are not valid `eventType` values in the v0.3 contract. Use the [canonical event names](events.md) through `/v1/events`, or map them to a supported low-level fact. Canonical `job_won` is a stage change, never a payment. Do not relabel an unsupported fact as payment to force delivery.
+`qualified_lead`, `job_won`, `Purchase` and provider stage names are not valid low-level `eventType` values. Use the [canonical event names](events.md) through `/v1/events`, or map them to a supported low-level fact. Canonical `job_won` is a stage change, never a payment. Do not relabel an unsupported fact as payment to force delivery.
 
 Allowed event types: `call`, `form`, `estimate`, `booking`, `payment`, `email`, `sms`, `postcard`, `note`, `stage_change`. Outcomes: `received`, `completed`, `missed`, `failed`, `unknown`. Qualification: `qualified`, `unqualified`, `unknown`. Direction: `inbound`, `outbound`, `unknown`.
 

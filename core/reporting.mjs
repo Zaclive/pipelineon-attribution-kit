@@ -121,6 +121,8 @@ export function buildReport(rows, range, coverage) {
       dealValue: row.dealValue ? { ...row.dealValue, counted: Boolean(countedDeal) } : null,
       ...(row.dealValue && row.dealDetails ? { dealDetails: { name: row.dealDetails.name,
         contacts: row.dealDetails.contacts.map(contact => ({ name: contact.name, address: contact.address })) } } : {}),
+      ...(row.dealValue && row.pipelineOnRecovery ? { pipelineOnRecovery: {
+        recoveredAt: row.pipelineOnRecovery.recoveredAt, deliveredAt: row.pipelineOnRecovery.deliveredAt } } : {}),
       touch: reportTouch(touch) });
     if (status === "linked" && touches?.firstTouch) {
       const describe = value => value ? { source: campaignEvidence(value).source, campaign: campaignEvidence(value).campaign,

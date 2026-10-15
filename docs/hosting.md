@@ -30,8 +30,10 @@ Hosted users configure their website and integrations in PipelineOn.
 
 Use a reviewed public-repository commit and its matching documentation. Clone with `git clone https://github.com/Zaclive/pipelineon-attribution-kit.git`, then `cd pipelineon-attribution-kit`. Tagged release downloads contain the files available at that tag. Record the version. The v0.4 runtime is Node.js 24.14.x; Docker pins it. Run commands from the kit root. Bash uses `cp`; on PowerShell use `Copy-Item`.
 
+Generate a new private configuration with the setup command below. It creates separate secrets and prints the pixel; it refuses to overwrite an existing `.env`. Do not copy `.env.example` first when using this command.
+
 ```sh
-cp .env.example .env
+node server/setup.mjs --site https://www.example.com --url https://attribution.example.com --name "Your business"
 ```
 
 Configure the private file:
@@ -46,7 +48,7 @@ Configure the private file:
 | `KIT_WRITE_TOKEN` | Different random secret for trusted importers. |
 | `KIT_META_MODE`, `KIT_GOOGLE_MODE` | Both `disabled` initially. Leave optional provider fields empty until configuring them. |
 
-You can generate the initial .env and single-script instructions with node server/setup.mjs --site https://www.example.com --url https://attribution.example.com --name "Your business". It refuses to overwrite .env and keeps generated credentials out of output. Add additional exact origins if the website uses both www and its apex. For manual configuration, generate each token locally with `node -e "console.log(require('node:crypto').randomBytes(32).toString('base64url'))"`. Run twice and save privately. Both tokens must be different and at least 32 characters. Restrict `.env` access; never paste secrets into documentation or commit them.
+Add additional exact origins if the website uses both www and its apex. As an alternative to the setup command, copy `.env.example` to `.env` (`Copy-Item .env.example .env` in PowerShell) and fill every required value manually. Generate each token locally with `node -e "console.log(require('node:crypto').randomBytes(32).toString('base64url'))"`. Run twice and save privately. Both tokens must be different and at least 32 characters. Restrict `.env` access; never paste secrets into documentation or commit them.
 
 ```sh
 docker compose up --build -d
@@ -56,7 +58,22 @@ curl --fail http://127.0.0.1:4310/health
 
 The supplied compose file binds the port to loopback and uses the `attribution-data` named volume. Run one process/replica per database. The host must preserve the volume through restarts/deployments. `/health` confirms process/version, not CRM linkage or delivery.
 
-For Node without Docker, install Node.js 24.14.x and pnpm, then run `pnpm start` from the kit root under a service manager and retain the `data/` directory. `pnpm test` runs the standalone suite. There are no runtime package dependencies.
+For Node without Docker, install Node.js 24.14.x, then run `node --env-file-if-exists=.env server/start.mjs` from the kit root under a service manager and retain the `data/` directory. No package manager or package installation is needed. `node --test test/*.test.mjs` runs the standalone suite. If pnpm is already available, `pnpm start` and `pnpm test` are optional shortcuts.
+
+Open the exact `KIT_PUBLIC_URL` origin in a browser and enter `KIT_READ_TOKEN` in **Dashboard read token**. Read its value privately from `.env` or your hosting secrets, without surrounding quotes. Do not use the write token to sign in. The dashboard exchanges the read token for a temporary session; a successful login does not prove outcome linkage.
+
+## Try it locally with Node
+
+Use a fresh private checkout or extracted release for this trial, separate from any live database. Run from the kit root with Node.js 24.14.x:
+
+```sh
+node server/setup.mjs --site http://127.0.0.1:4320 --url http://127.0.0.1:4310 --name "Local trial"
+node --env-file-if-exists=.env server/start.mjs
+```
+
+Leave the server running. Open `http://127.0.0.1:4310/` and sign in with the generated read token. Serve your test website over HTTP at `http://127.0.0.1:4320` in a second process; `file://` pages are unsupported. Install the printed single script and wire consent using [the pixel guide](pixel.md), then follow [the verification checklist](verify.md). Your agent can build a synthetic form/backend using [the outcome contract](api.md#self-hosted-kit); the kit does not generate a customer website or universally connect a CRM.
+
+Use the exact host and port configured for each origin: `localhost` and `127.0.0.1` are different origins. Dashboard sign-in uses the configured collector origin; the test website uses `KIT_ALLOWED_ORIGINS`. If you change the collector's local port, also set `PORT` in `.env` before starting. HTTP loopback needs no public DNS or TLS certificate. A public deployment still requires HTTPS, persistent hosting and backups.
 
 ## Add HTTPS and network routing
 
