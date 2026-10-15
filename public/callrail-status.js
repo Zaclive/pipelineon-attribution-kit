@@ -11,7 +11,7 @@ async function refresh() {
     const data = await response.json();
     if (!response.ok) throw new Error(data.error?.message || "Could not load CallRail receipts.");
     if (current !== revision) return;
-    status.textContent = data.configured ? `Company ${data.companyId} · ${data.deliveryOwner === "self" ? "Owns Meta delivery" : "Attribution only"} · Capture ${data.cookieName} and ${data.cookieName}_ads` : "CallRail is not connected. Follow CALLRAIL.md and set the server configuration.";
+    status.textContent = data.configured ? `Company ${data.companyId} · ${data.deliveryOwner === "self" ? "Owns Meta delivery" : "Attribution only"} · Capture ${data.cookieName} and ${data.cookieName}_ads` : "CallRail is not connected. Follow docs/callrail.md and set the server configuration.";
     if (!data.calls.length) list.append(element("p", "No CallRail calls received yet. Test the website number pool and captured cookies.", "small"));
     for (const row of data.calls) {
       const card = element("article", "", "meta-card");

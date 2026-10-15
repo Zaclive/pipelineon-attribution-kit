@@ -46,7 +46,7 @@ Configure the private file:
 | `KIT_WRITE_TOKEN` | Different random secret for trusted importers. |
 | `KIT_META_MODE`, `KIT_GOOGLE_MODE` | Both `disabled` initially. Leave optional provider fields empty until configuring them. |
 
-You can generate the initial .env and single-script instructions with pnpm run setup --site https://www.example.com --url https://attribution.example.com --name "Your business". It refuses to overwrite .env and keeps generated credentials out of output. Add additional exact origins if the website uses both www and its apex. For manual configuration, generate each token locally with `node -e "console.log(require('node:crypto').randomBytes(32).toString('base64url'))"`. Run twice and save privately. Both tokens must be different and at least 32 characters. Restrict `.env` access; never paste secrets into documentation or commit them.
+You can generate the initial .env and single-script instructions with node server/setup.mjs --site https://www.example.com --url https://attribution.example.com --name "Your business". It refuses to overwrite .env and keeps generated credentials out of output. Add additional exact origins if the website uses both www and its apex. For manual configuration, generate each token locally with `node -e "console.log(require('node:crypto').randomBytes(32).toString('base64url'))"`. Run twice and save privately. Both tokens must be different and at least 32 characters. Restrict `.env` access; never paste secrets into documentation or commit them.
 
 ```sh
 docker compose up --build -d
@@ -129,3 +129,13 @@ For a custom CRM Worker, use [CRM middleware](crm.md#optional-cloudflare-crm-rel
 SQLite is included with no database licence fee. You pay for its persistent disk as part of hosting. Cloudflare D1 and hosted PostgreSQL are alternatives only after writing and testing a storage adapter; the current kit has no database-provider toggle. Reuse an existing CRM where possible. A CRM subscription does not host this kit or automatically supply payment events.
 
 For a regional price example checked 15 October 2026, [Pipedrive Lite](https://www.pipedrive.com/en/pricing) displayed AU$19 per seat/month billed annually (AU$228 per seat/year), with a 14-day trial. This is not a universal $20 price or a requirement to buy Pipedrive. Verify local currency, billing term, API permissions and any workflow/adapter charges before choosing a plan.
+
+## Configure with Docker only
+
+The setup module needs no package manager. With Node installed, use node server/setup.mjs. With only Docker, run this from the extracted kit directory (Bash or PowerShell):
+
+```sh
+docker run --rm --mount "type=bind,source=$PWD,target=/work" --workdir /work node:24.14.1 node server/setup.mjs --site https://www.example.com --url https://your-collector.example.com --name "Your business"
+```
+
+It writes .env into this private directory and prints the consent-gated snippet, not the generated secrets. Then follow the selected hosting recipe. Node-only startup is node --env-file-if-exists=.env server/start.mjs; Docker startup is docker compose up --build -d. The default internal port is 4310; use the host PORT variable for a different internal port, and route the public HTTPS origin to it. These are infrastructure choices, not extra scripts on the customer website.
