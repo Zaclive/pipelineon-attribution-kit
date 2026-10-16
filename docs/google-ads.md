@@ -6,10 +6,39 @@ This optional adapter sends consented business outcomes directly to Google's **D
 
 1. Use an existing Google Ads advertiser account and create an offline conversion action with type `UPLOAD_CLICKS` for each business milestone you want to measure. Its UI source is Website (Import from clicks). Record the numeric action ID and ten-digit account ID without hyphens. Map distinct stages to distinct actions.
 2. Decide which actions should be primary for bidding in Google Ads. Do not count every step of one funnel as a primary result by default. This adapter does not change bidding settings.
-3. In a Google Cloud project, enable the Data Manager API and configure an OAuth client. Authorize `https://www.googleapis.com/auth/datamanager` using a Google user with access to the advertiser account, and obtain an offline refresh token through your secure OAuth flow. Public OAuth applications may require Google's verification. Follow [Google's access guide](https://developers.google.com/data-manager/api/devguides/quickstart/set-up-access).
-4. Keep the client secret and refresh token on the server. Do not put them in chat, website HTML, analytics tags or source control. Complete any Google account and customer-data terms yourself when Google requests agreement.
+3. Follow [Authorize your own Google account](#authorize-your-own-google-account) below. This kit currently uses a private OAuth client's ID/secret and an offline refresh token. The owner needs access to the advertiser, directly or through an authorized Ads manager account.
+4. Keep credentials on the server. Complete any required account/customer-data terms through the owner's authorized process. There is no requirement to buy a third-party tracking app or deploy server GTM for this connector.
 
 This uses the current Data Manager route. New integrations should not assume they can obtain classic Google Ads API `UploadClickConversions` access. See [Google's offline upload guidance](https://developers.google.com/google-ads/api/docs/conversions/upload-offline).
+
+## Authorize your own Google account
+
+A private Google Cloud project and OAuth client are still required for this kit's current user-token flow. They identify your own integration; creating them does not publish a customer-facing product. Do not start with the public multi-tenant onboarding process.
+
+1. Select or create a Cloud project owned by the business. Enable **Data Manager API**. Follow [Google's access quickstart](https://developers.google.com/data-manager/api/devguides/quickstart/set-up-access); use its **Advertiser** access route. Do not apply as a Data Partner unless you actually need partner links.
+2. Configure Google Auth Platform branding, audience and data access. Request `https://www.googleapis.com/auth/datamanager`. Choose **Internal** only for an eligible Workspace/Cloud Identity organization whose users stay inside that organization. Otherwise use **External**. During initial testing, add the owner's Google account as a test user.
+3. Create a **Desktop app** OAuth client for this private bootstrap and download its client JSON to a private location outside the repository. The desktop flow returns to loopback; it needs no new public OAuth callback server. A web-app client is a different flow and needs its configured redirect URI.
+4. On the owner's trusted computer, install/use Google's official Cloud CLI. Use an isolated private `CLOUDSDK_CONFIG` directory for this bootstrap so it does not replace credentials used by other local integrations. Run this single-line command, replacing the path. It uses the private client you just created and the scopes from Google's ADC quickstart:
+
+```sh
+gcloud auth application-default login --client-id-file="/PRIVATE/PATH/google-desktop-client.json" --scopes="https://www.googleapis.com/auth/datamanager,https://www.googleapis.com/auth/cloud-platform"
+```
+
+5. Complete the browser sign-in/consent with the intended Google user. Verify that this user has access to the exact Ads advertiser or its authorized parent manager. Cloud IAM access alone does not grant Google Ads access.
+6. Read the generated ADC credential file privately from the location reported by `gcloud`. For its `authorized_user` credentials, map `client_id` to `KIT_GOOGLE_CLIENT_ID`, `client_secret` to `KIT_GOOGLE_CLIENT_SECRET`, and `refresh_token` to `KIT_GOOGLE_REFRESH_TOKEN`. Transfer values directly into the deployed service's secret configuration; do not print or paste the JSON/tokens into chat, logs or Git. Do not run a token-printing command just to prove setup. The kit does not automatically load ADC: it reads these environment variables and refreshes access tokens itself.
+7. Keep `KIT_GOOGLE_MODE=validate`, configure the account/action IDs below, restart the deployed service, and prove authorization with an actual validation receipt. A successful OAuth login alone does not verify account/action access.
+
+The Cloud CLI is a setup tool. The attribution server needs only its existing Node runtime and the configured refresh-token credentials; it does not need `gcloud` running to refresh access.
+
+### Private use and token lifetime
+
+Google documents verification exceptions for [eligible personal use and internal applications](https://support.google.com/cloud/answer/13464323?hl=en). Personal use is subject to the unverified warning and user cap; Internal requires an organization-owned project and an eligible audience. Neither exemption removes advertiser permissions or Google's policies.
+
+For **External + Testing**, authorizations and offline refresh tokens expire after seven days for these scopes. Do not present this as a permanent unattended connection. For ongoing eligible private use, use the appropriate **In production** publishing status and reauthorize as needed; this status is an OAuth deployment setting, not an app-store listing or proof of verification. Determine the applicable exception or verification requirement from the actual account before launch. Tokens can still be revoked or expire for other reasons. See [Google's audience and token rules](https://support.google.com/cloud/answer/15549945?hl=en).
+
+Google also supports service-account authentication, which has different verification rules. The shipped launcher currently accepts the OAuth client/refresh-token fields above; it does not accept a service-account JSON key, impersonated ADC or an attached service account as a drop-in configuration. Use a separately implemented/tested token provider if choosing that architecture. Do not claim the stock kit supports it automatically.
+
+For customer-facing OAuth, follow [the multi-tenant boundary](ad-accounts.md#building-a-multi-tenant-product) and [Google's verification guide](https://developers.google.com/data-manager/api/devguides/concepts/oauth-verification). This own-account recipe is not a review exemption for a public service.
 
 ## Configure the standalone server
 

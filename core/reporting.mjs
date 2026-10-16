@@ -119,6 +119,7 @@ export function buildReport(rows, range, coverage) {
       status, evidence: attribution?.evidence ?? null, historyLimited: Boolean(touches?.historyLimited),
       amountMinor: row.amountMinor ?? null, currency: row.currency ?? null,
       dealValue: row.dealValue ? { ...row.dealValue, counted: Boolean(countedDeal) } : null,
+      ...(row.dealValue && row.dealActivities ? { dealActivities: row.dealActivities } : {}),
       ...(row.dealValue && row.dealDetails ? { dealDetails: { name: row.dealDetails.name,
         contacts: row.dealDetails.contacts.map(contact => ({ name: contact.name, address: contact.address })) } } : {}),
       ...(row.dealValue && row.pipelineOnRecovery ? { pipelineOnRecovery: {

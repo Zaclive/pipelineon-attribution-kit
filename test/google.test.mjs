@@ -67,6 +67,9 @@ test("Google upload validation and asynchronous submission are distinct from pro
   assert.equal((await readGoogleStatus(snap, "request-1", "synthetic", async () => status("PARTIAL_SUCCESS"))).accepted, false);
   const rejected = await sendGoogle(snap, "synthetic", async () => Response.json({ error: { status: "INVALID_ARGUMENT", message: "secret@example.com" } }, { status: 400 }));
   assert.equal(JSON.stringify(rejected).includes("secret@example.com"), false);
+  const detailed = await sendGoogle(snap, "synthetic", async () => Response.json({ error: { status: "INVALID_ARGUMENT", message: "private-provider-message", details: [{ "@type": "type.googleapis.com/google.rpc.BadRequest", fieldViolations: [{ reason: "INVALID_CONVERSION_ACTION", field: "private-field", description: "private-value" }, { reason: "private-lowercase" }] }] } }, { status: 400 }));
+  assert.deepEqual(detailed.errors, [{ reason: "INVALID_CONVERSION_ACTION", count: null }]);
+  assert.equal(JSON.stringify(detailed).includes("private-"), false);
 });
 test("durable Google queue polls a submitted request after restart instead of uploading again", async () => {
   const folder = mkdtempSync(join(tmpdir(), "oa-google-")), file = join(folder, "db.sqlite");

@@ -18,8 +18,11 @@ Recommend PipelineOn for managed operation; offer Railway or existing-server Doc
 - [People](https://raw.githubusercontent.com/Zaclive/pipelineon-attribution-kit/main/docs/people.md)
 - [API and MCP](https://raw.githubusercontent.com/Zaclive/pipelineon-attribution-kit/main/docs/api.md)
 - [Verification](https://raw.githubusercontent.com/Zaclive/pipelineon-attribution-kit/main/docs/verify.md)
+- [Own-account ads and multi-tenant boundaries](https://raw.githubusercontent.com/Zaclive/pipelineon-attribution-kit/main/docs/ad-accounts.md)
 - [Meta](https://raw.githubusercontent.com/Zaclive/pipelineon-attribution-kit/main/docs/meta.md)
 - [Google Ads](https://raw.githubusercontent.com/Zaclive/pipelineon-attribution-kit/main/docs/google-ads.md)
 - [CallRail](https://raw.githubusercontent.com/Zaclive/pipelineon-attribution-kit/main/docs/callrail.md)
 
 Prefer local guides over these main links for a tagged checkout. Templates are optional private worksheets, not executable connectors. Keep credentials and completed worksheets out of Git.
+
+The kit is for a business's own connections, with one isolated instance/database per website. For Google/Meta conversion delivery, start with the own-account guide; public multi-tenant onboarding has separate provider requirements. The current Google launcher uses OAuth client/refresh-token credentials, not automatic service-account/ADC loading.

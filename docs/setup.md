@@ -31,7 +31,7 @@ flowchart LR
 | 2. Install the pixel | [Direct install](pixel.md), [GTM](gtm.md) or [optional Worker](hosting.md#put-the-pixel-behind-an-optional-cloudflare-worker) | A consented tagged visit returns an accepted session. |
 | 3. Connect the source | [CRM, API and offline field mapping](crm.md); [CallRail](callrail.md) when needed | The saved enquiry retains that session, or explicitly remains unlinked. |
 | 4. Import an outcome | [Correct API wrapper](api.md#send-to-the-correct-api) | One authoritative payment links to the source with exact amount/currency. |
-| 5. Add advertising | [Meta](meta.md) or [Google Ads](google-ads.md) | Meta has a Test Events entry; Google has a validation receipt. Verify live processing separately. |
+| 5. Add advertising | [Own-account setup](ad-accounts.md), then [Meta](meta.md) or [Google Ads](google-ads.md) | Meta has a Test Events entry; Google has a validation receipt. Verify live processing separately. |
 | 6. Verify and launch | [End-to-end checks](verify.md) | Replay, restart, consent and real mobile/desktop forms pass. |
 
 For agent-led installation, start with [the agent task](ai-setup.md); it asks for unresolved choices and can create a private setup brief. You do not need to fill a long worksheet before choosing a route.
