@@ -15,4 +15,6 @@
 
 Automated tests establish defined behavior, not universal accuracy. An installation is verified only to the receipts actually inspected. See [verification](verify.md) and [browser testing](browser-continuity.md). Recommended marketing wording: "Open attribution with inspectable browser matching, verified CRM links, revenue reporting and optional conversion feedback." Describe fingerprinting as evaluation until real-traffic accuracy is measured.
 
+Deployment scope is one business operating its own connections, with an isolated instance/database per website. [Own-account ad setup](ad-accounts.md) explains private Meta/Google credentials. A public multi-tenant product additionally needs customer authorization, tenant isolation, credential management and applicable provider app/review/verification work; the kit does not implement that onboarding. Conversion delivery also does not include campaign creation, spend reporting or budget/bidding management.
+
 Not included: server cookie restoration, required custom-domain collection, a proprietary identity network, universal ad-blocker recovery, automated bidding, predicted LTV or an ROI guarantee. Existing CRM/API/advertising costs and provider approval requirements remain separate from the MIT licence.

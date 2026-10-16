@@ -24,6 +24,8 @@ Install the generated single script and connect consent/GPC handling using docs/
 
 Fingerprint evaluation is included in the consented pixel. Follow docs/browser-continuity.md: observe candidate evidence, never promote it to a verified person link. The matching rules are diagnostic, not calibrated probabilities. Keep advertising disabled until the source-to-outcome path works. When requested, configure one conversion sender and test Meta/Google separately using their guides.
 
+When asked to connect Google or Facebook, start at [own-account ad setup](ad-accounts.md). Default to this business's own advertiser credentials, not a public multi-tenant OAuth product. Explain the private Google project/client and Meta dataset-token requirements before provisioning. Follow the linked provider steps through receipts, including Google's Testing-mode token expiry. Do not promise zero app objects or zero verification in every case. Public customer onboarding uses the separate platform requirements in that guide.
+
 ## Finish with proof
 
 Follow docs/verify.md for one tagged consented visit, accepted enquiry, authoritative outcome with original timestamp/amount/currency, persisted report, replay, restart, consent withdrawal and mobile/desktop form checks. Test cookie reset and ambiguous fingerprints in an isolated QA site/database; no synthetic payments in live reports. A deployment or script load alone is incomplete.

@@ -2,6 +2,8 @@
 
 Connect consented website visits to enquiries, calls, jobs and payments. Includes browser fingerprint evaluation, matching evidence, attribution reports and optional Meta/Google conversion delivery. MIT licensed.
 
+This kit is for a business operating its own attribution and ad-account connections, with one isolated server/database per website. Building a multi-tenant service for other businesses has additional application, permission and verification requirements; the hosted PipelineOn app handles its own platform onboarding.
+
 ## Set this up with your agent
 
 Give a coding agent this repository URL and say:
@@ -56,6 +58,14 @@ For a free local trial, follow [the Node-only local recipe](docs/hosting.md#try-
 
 Then follow [the setup checklist](docs/setup.md): preserve the accepted visitorSessionId with an enquiry, import an authoritative outcome, inspect its attribution, restart and replay it. A running pixel is the start of setup, not its completion.
 
+## Connect your own Google and Facebook accounts
+
+Give your agent this follow-up:
+
+> Read docs/ad-accounts.md and the Google/Meta guides it links. Connect this business's own ad accounts for conversion delivery. Use the direct advertiser setup, explain the required private credentials, configure Meta Test Events and Google validate mode, and verify provider receipts before any authorized live delivery. Keep the one-script install. Ask only for missing account access or decisions.
+
+For Meta, start with the dataset's Events Manager token route; you do not build a public login app. Google still needs a private Cloud project and OAuth client for this kit's current authentication. Eligible personal/internal use can avoid public OAuth verification, with the limits explained in [own-account setup](docs/ad-accounts.md). This connects confirmed conversions; campaign creation, ad-spend reporting and bidding automation are separate integrations.
+
 ## What is included, and where to go next
 
 | Task | Guide |
@@ -67,7 +77,7 @@ Then follow [the setup checklist](docs/setup.md): preserve the accepted visitorS
 | CRM, API, CSV and offline outcome mapping | [CRM mapping](docs/crm.md) and [access options](docs/crm-access.md) |
 | Verified people and several browser histories | [People](docs/people.md) and [HubSpot mapping](docs/hubspot-attribution.md) |
 | Calls, qualification and payments | [CallRail](docs/callrail.md) and [business events](docs/events.md) |
-| Optional conversion feedback | [Meta](docs/meta.md) and [Google Ads](docs/google-ads.md) |
+| Own-account conversion feedback and multi-tenant boundaries | [Ad-account setup](docs/ad-accounts.md), [Meta](docs/meta.md) and [Google Ads](docs/google-ads.md) |
 | Reports, evidence and read-only MCP tools | [API](docs/api.md) |
 | Terminology and defensible claims | [Tracking jargon](docs/tracking-jargon.md) and [capabilities and limits](docs/capabilities.md) |
 | Prove the full installation | [Verification](docs/verify.md) |

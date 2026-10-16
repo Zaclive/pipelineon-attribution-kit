@@ -2,6 +2,17 @@
 
 Connect a dataset you are authorized to use, test a real server delivery, then enable new live outcomes. Saving a token only configures the destination; your connector must also request delivery on each eligible outcome.
 
+## Connect your own dataset
+
+For a business sending to its own dataset, use the direct Events Manager route. You do not need to develop a public Facebook Login application. Meta's [current direct-integration guide](https://developers.facebook.com/documentation/ads-commerce/conversions-api/get-started) describes creating the CAPI app/system user through Events Manager without App Review. An integration object may still exist behind the scenes; "no public app to build" does not mean "no app object anywhere."
+
+1. In the owner's Events Manager, select the intended dataset/pixel and record its numeric ID. Use the same destination as any existing browser events that will be paired with this sender.
+2. Open Settings, find Conversions API and its manual/direct integration option, then generate an access token. This control requires the business's developer privileges; if it is missing, resolve those privileges with the administrator rather than creating an unrelated public app.
+3. Complete the documented Manage Integrations / Conversions API / Manage step when shown. Meta can create the associated app and system user automatically. Existing authorized app/system-user setups are an alternative, not a prerequisite for this route.
+4. Store the token privately on the attribution server. Open the selected dataset's Test Events view and obtain its test code. Configure and verify the delivery as below.
+
+Serving other advertisers through your own platform is a separate [platform integration](ad-accounts.md#building-a-multi-tenant-product). Account restrictions and required business access still apply to direct use.
+
 ## Collect the required access and data
 
 | Item | Where it comes from |
@@ -14,7 +25,7 @@ Connect a dataset you are authorized to use, test a real server delivery, then e
 | Matching data and permission | Customer-provided normalized/hashed email or phone, or another supported matching field, with explicit advertising permission. UTMs/session references alone are insufficient. |
 | Delivery owner and event ID | Inventory the browser pixel, HubSpot/other CRM, CallRail and any automation already sending the same conversion. |
 
-In Events Manager, select the intended dataset, find its Conversions API/manual integration setup and obtain the server token using the available authorized route. Interface wording and available token options vary by account. If you cannot access them, the business administrator must grant the required access. Keep the [Meta setup reference](https://developers.facebook.com/docs/marketing-api/conversions-api/get-started/) with the deployment notes and check the current account's requirements. This repository does not supply Meta access or a partner approval.
+Interface wording and available token options vary by account. Record the actual destination and access route. This repository does not supply Meta credentials or platform-partner approval. The remaining instructions apply to the kit; the explicitly labeled PipelineOn instructions are for the separate hosted product.
 
 ## Configure the destination
 

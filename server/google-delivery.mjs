@@ -49,11 +49,17 @@ async function responseJson(response) {
 }
 function errorReceipt(response, result) {
   const errorCode = typeof result?.error?.status === "string" && /^[A-Z_]{1,80}$/.test(result.error.status) ? result.error.status : null;
+  // Google descriptions may echo matching data. Retain only bounded machine reasons from BadRequest.
+  const errors = (Array.isArray(result?.error?.details) ? result.error.details : []).slice(0, 20)
+    .filter(detail => detail?.["@type"] === "type.googleapis.com/google.rpc.BadRequest")
+    .flatMap(detail => Array.isArray(detail.fieldViolations) ? detail.fieldViolations.slice(0, 50) : [])
+    .filter(violation => typeof violation?.reason === "string" && /^[A-Z_]{1,120}$/.test(violation.reason))
+    .map(violation => ({ reason: violation.reason, count: null }));
   const retryable = response.status >= 500 || [408, 429].includes(response.status) || response.ok && !result;
   const header = response.headers.get("retry-after");
   const delay = header && /^\d+$/.test(header) ? Number(header) : header ? Math.ceil((Date.parse(header) - Date.now()) / 1000) : null;
   return { accepted: false, retryable, reason: response.ok ? "unconfirmed_response" : "google_rejected", httpStatus: response.status,
-    errorCode, retryAfterSeconds: Number.isFinite(delay) && delay > 0 ? delay : null };
+    errorCode, ...(errors.length ? { errors } : {}), retryAfterSeconds: Number.isFinite(delay) && delay > 0 ? delay : null };
 }
 // No provider error messages or matching fields are returned in receipts.
 export async function sendGoogle(snapshot, accessToken, fetcher) {
