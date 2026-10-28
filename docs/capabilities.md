@@ -1,5 +1,7 @@
 # Capabilities, requirements and evidence
 
+For the implementation map and public release history, read [architecture/status](architecture.md). For one business versus several customers and CRMs, read [deployment models](deployment-models.md) and [offline-event mapping](offline-event-mapping.md). Those guides identify additional work; they do not add runtime capabilities.
+
 | Capability | Included | Requirement / boundary |
 | --- | --- | --- |
 | Website visits and campaign capture | One consented pixel, SPA path/query and common #/ or #!/ routes | Script must load and collection must be permitted/reachable |

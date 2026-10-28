@@ -2,6 +2,8 @@
 
 The browser script collects consented source observations and returns an accepted `visitorSessionId`. Your backend or trusted CRM connector records confirmed business facts. Those facts enter one attribution contract and can optionally request Meta or Google Ads delivery. GTM is optional. A browser click is not proof that a form succeeded, a job was won or a payment settled.
 
+For the complete source-to-destination process, read [offline-event mapping](offline-event-mapping.md). "Feed back to the pixel" means server delivery to a Meta dataset/pixel ID, or separately to a Google conversion action; it does not mean firing the website script when a later offline outcome happens. CRM adapters reuse this contract and destination code, with separate configuration and authorization for each customer account.
+
 ## Canonical names
 
 Send `POST /v1/events` with the server-side write token. The PipelineOn hosted equivalent is `POST /api/v1/events` with `{ "siteId": "WEBSITE_UUID", "event": { ... } }` and an `Idempotency-Key` header. Existing `/v1/outcomes` and `/v1/calls` routes remain supported.

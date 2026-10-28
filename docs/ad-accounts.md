@@ -2,6 +2,8 @@
 
 Use this as the agent's entry point for optional Google Ads and Facebook/Instagram conversion delivery. The kit runs for one business, with one isolated instance/database per website. Reuse the installed consented script and the trusted source adapter. Credentials and conversion delivery live on the server.
 
+Choose [the deployment model](deployment-models.md) first. Several customers using the same CRM still need separate source/ad connections and account mappings. Several CRMs inside one business do not, by themselves, require a customer login portal. [Offline-event mapping](offline-event-mapping.md) explains how each source feeds the shared destination workers.
+
 Here, connecting ads means sending confirmed business outcomes back to an advertiser's account. The kit does not create campaigns, retrieve ad spend, operate budgets or promise better bidding. A source-tagged visit alone is not an eligible conversion or sufficient customer matching data.
 
 ## Choose the correct access route
@@ -28,6 +30,8 @@ Owner sign-in, consent, missing privileges or provider review can require owner 
 ## Building a multi-tenant product
 
 The hosted PipelineOn application has a different onboarding and security surface. Turning this standalone kit into a service for other businesses requires additional work:
+
+Follow [the multi-tenant build sequence](deployment-models.md#build-a-multi-tenant-product). Application login establishes organization membership; Connect CRM/Meta/Google establishes provider authorization; provider review establishes the approved access/distribution scope. These are separate steps. The stock read-token dashboard implements neither customer onboarding nor provider OAuth callbacks. Separate customer instances also do not automatically exempt a third-party service from platform requirements.
 
 - **Meta:** follow [Conversions API as a Platform](https://developers.facebook.com/documentation/ads-commerce/conversions-api/set-up-conversions-api-as-a-platform). Its documented route requires a Meta app and App Review for the specified permissions/features. Complete the business verification and access steps required by the selected route. Owner-generated CAPI tokens are not blanket approval for a public platform.
 - **Google:** implement customer OAuth delegation and the applicable [Data Manager OAuth verification](https://developers.google.com/data-manager/api/devguides/concepts/oauth-verification). An organization-internal or personal-use exception does not cover arbitrary advertiser customers. Data Partner approval is a separate requirement when choosing a partner-link architecture; ordinary authorized advertiser access is a different route.

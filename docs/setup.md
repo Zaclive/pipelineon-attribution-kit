@@ -2,6 +2,8 @@
 
 Connect a tagged visit to a saved enquiry, booking or payment. Add Meta or Google Ads delivery after that connection works. Start with one website, one form and one payment.
 
+This is the stock single-site acceptance checklist. First choose [individual use, isolated customer instances or a shared product](deployment-models.md). A shared product additionally requires tenant isolation, customer login and provider connection/review work; following this checklist alone does not implement that application.
+
 ## Choose your installation
 
 | Route | What you need |
@@ -51,5 +53,7 @@ Use a separate QA website/database for synthetic records. A label saying "test" 
 ## What you still supply
 
 The kit includes the pixel, outcome API, reports, optional CallRail connector, independent Meta/Google queues and read-only assistant tools. A native connector or your adapter supplies normalized outcomes. There is no universal CRM login or automatic interpretation of arbitrary fields.
+
+Use [offline-event mapping](offline-event-mapping.md) to separate reusable CRM adapter code from each customer's field mapping and source/destination connections. Offline outcomes go from the trusted server to the ad platform; they do not require the browser pixel to run again.
 
 An accepted visit, saved CRM record, import receipt, linked report and Meta acceptance are separate checkpoints. Verify each one. Never invent a session or change event times to force a match. Provider acceptance alone does not prove advertising attribution or improved performance.

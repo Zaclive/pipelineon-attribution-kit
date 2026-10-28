@@ -4,6 +4,8 @@ Connect consented website visits to enquiries, calls, jobs and payments. Include
 
 This kit is for a business operating its own attribution and ad-account connections, with one isolated server/database per website. Building a multi-tenant service for other businesses has additional application, permission and verification requirements; the hosted PipelineOn app handles its own platform onboarding.
 
+Start with [individual use versus multiple customers](docs/deployment-models.md). One business with several CRMs needs an adapter for each source; many customers using one CRM can reuse its adapter but still need separate connections, mappings and account authorization. Customer login and provider Connect flows for a shared product are additional development. [Architecture and project history](docs/architecture.md) distinguish the shipped baseline from that work.
+
 ## Set this up with your agent
 
 Give a coding agent this repository URL and say:
@@ -71,10 +73,12 @@ For Meta, start with the dataset's Events Manager token route; you do not build 
 | Task | Guide |
 | --- | --- |
 | Agent instructions and setup decisions | [Agent setup](docs/ai-setup.md) |
+| Coding-agent entry point and project history | [AGENTS.md](AGENTS.md) and [architecture/status](docs/architecture.md) |
+| Individual use, customer instances or a shared product | [Deployment models](docs/deployment-models.md) |
 | Hosting, free plans, persistent storage and backups | [Hosting](docs/hosting.md) |
 | Pixel, consent, SPA/hash routes and form references | [Pixel](docs/pixel.md) |
 | Browser fingerprints and possible-return evidence | [Browser continuity](docs/browser-continuity.md) |
-| CRM, API, CSV and offline outcome mapping | [CRM mapping](docs/crm.md) and [access options](docs/crm-access.md) |
+| CRM, API, CSV and offline outcome mapping | [End-to-end mapping](docs/offline-event-mapping.md), [CRM contract](docs/crm.md) and [access options](docs/crm-access.md) |
 | Verified people and several browser histories | [People](docs/people.md) and [HubSpot mapping](docs/hubspot-attribution.md) |
 | Calls, qualification and payments | [CallRail](docs/callrail.md) and [business events](docs/events.md) |
 | Own-account conversion feedback and multi-tenant boundaries | [Ad-account setup](docs/ad-accounts.md), [Meta](docs/meta.md) and [Google Ads](docs/google-ads.md) |

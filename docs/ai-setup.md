@@ -2,9 +2,13 @@
 
 Start at README.md and package.json at the checked-out release. You are a coding/deployment agent; the kit's read-only MCP cannot provision infrastructure. Read docs/setup.md as the single acceptance checklist. Other guides are references for the selected route, not competing installation flows.
 
+Read [architecture/status](architecture.md) for the source map and public history. Choose the [deployment model](deployment-models.md) from the owner's context: one business, separate customer instances or a shared multi-tenant product. Count CRM products separately from customer/source accounts. This guide's stock-server steps install one website; the multi-tenant guide describes additional application work, not a hidden setup option.
+
 ## First conversation
 
 Use the owner's supplied context. Ask one grouped question only for missing facts: website/CMS and access, existing CRM or outcome source, desired managed versus self-hosted route, existing server resources, monthly budget and consent manager. Do not ask again for an answered decision.
+
+For multiple customers, also resolve whether they need customer sign-in and self-service provider connections or separately operated instances. Reuse one adapter per CRM product while recording each account's authorization, custom-field mapping and business definitions. Follow [offline-event mapping](offline-event-mapping.md) before estimating what a new CRM connection requires.
 
 Present these practical options before provisioning:
 
@@ -24,7 +28,7 @@ Install the generated single script and connect consent/GPC handling using docs/
 
 Fingerprint evaluation is included in the consented pixel. Follow docs/browser-continuity.md: observe candidate evidence, never promote it to a verified person link. The matching rules are diagnostic, not calibrated probabilities. Keep advertising disabled until the source-to-outcome path works. When requested, configure one conversion sender and test Meta/Google separately using their guides.
 
-When asked to connect Google or Facebook, start at [own-account ad setup](ad-accounts.md). Default to this business's own advertiser credentials, not a public multi-tenant OAuth product. Explain the private Google project/client and Meta dataset-token requirements before provisioning. Follow the linked provider steps through receipts, including Google's Testing-mode token expiry. Do not promise zero app objects or zero verification in every case. Public customer onboarding uses the separate platform requirements in that guide.
+When asked to connect Google or Facebook, start at [ad-account setup](ad-accounts.md) and use the selected deployment model. For one business, use its own advertiser credentials and explain the private Google project/client and Meta dataset-token requirements. For a customer-facing platform, follow the [multi-tenant build sequence](deployment-models.md#build-a-multi-tenant-product), including application login, provider authorization and applicable review. Follow the linked provider steps through receipts, including Google's Testing-mode token expiry. Do not promise zero app objects or zero verification in every case.
 
 ## Finish with proof
 
