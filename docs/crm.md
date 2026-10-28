@@ -2,6 +2,8 @@
 
 Use [canonical business events](events.md) when starting a new adapter; `/v1/outcomes` remains supported. Save the accepted visitor reference on the enquiry, map confirmed business activity, then send it to the outcome API. An API key authorizes access; the connector or workflow performs the synchronization.
 
+Start with [the offline mapping workflow](offline-event-mapping.md) for what to build per CRM and configure per customer. [Deployment models](deployment-models.md) distinguish one business with several sources from a product connecting many customer accounts. The field contract below is shared across those designs.
+
 ## Choose the connection route
 
 Offline means the business result can happen after the website session, by phone, in a job system or in person. Keep its actual occurrence time and action source. Preserve the original enquiry's browser reference when known; a truly offline record can remain unlinked locally while having its own permitted Meta matching data.
